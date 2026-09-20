@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../models/profile_stat.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_app_bar.dart';
@@ -11,9 +13,26 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return Scaffold(
       // 헤더 — 390x64
-      appBar: const CommonAppBar(title: '내 프로필'),
+      appBar: CommonAppBar(
+        title: '내 프로필',
+        actions: [
+          IconButton(
+            onPressed: () {}, // 1주차에는 동작을 연결하지 않습니다.
+            // 단색 SVG는 colorFilter로 테마 색상을 입힙니다.
+            icon: SvgPicture.asset(
+              'assets/icons/person.svg',
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(colors.primary, BlendMode.srcIn),
+              semanticsLabel: '내 정보',
+            ),
+          ),
+        ],
+      ),
       body: const SafeArea(top: false, child: ProfileBody()),
     );
   }
@@ -68,6 +87,18 @@ class ProfileHeader extends StatelessWidget {
               width: 124,
               height: 124,
               fit: BoxFit.cover,
+              // 프로필 이미지가 없으면 기본 Icon을 보여줍니다.
+              errorBuilder: (context, error, stackTrace) => Container(
+                width: 124,
+                height: 124,
+                color: colors.primaryContainer,
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.person,
+                  size: 64,
+                  color: colors.primary,
+                ),
+              ),
             ),
           ),
         ),
@@ -122,16 +153,23 @@ class EditProfileButton extends StatelessWidget {
 class ProfileStats extends StatelessWidget {
   const ProfileStats({super.key});
 
+  static const List<ProfileStat> stats = [
+    ProfileStat(label: '본 영화', value: '342'),
+    ProfileStat(label: '평점', value: '4.2'),
+    ProfileStat(label: '즐겨찾기', value: '58'),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(child: StatItem(label: '본 영화', value: '342')),
-        SizedBox(width: 8),
-        Expanded(child: StatItem(label: '평점', value: '4.2')),
-        SizedBox(width: 8),
-        Expanded(child: StatItem(label: '즐겨찾기', value: '58')),
-      ],
+    return Row(
+      spacing: 8,
+      children: stats
+          .map(
+            (stat) => Expanded(
+              child: StatItem(label: stat.label, value: stat.value),
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -190,9 +228,7 @@ class FavoriteGenres extends StatelessWidget {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: [
-            for (final genre in genres) GenreChip(label: genre),
-          ],
+          children: genres.map((genre) => GenreChip(label: genre)).toList(),
         ),
       ],
     );
