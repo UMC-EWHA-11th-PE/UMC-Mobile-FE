@@ -10,20 +10,29 @@ class AppTheme {
   /// 8px을 기본 간격 단위로 사용합니다.
   static const double spacingUnit = 8;
 
-  /// Card, Input의 모서리 반경입니다.
+  /// Card, Input, 프로필 수정 버튼의 모서리 반경입니다.
   static const double radius = 8;
 
-  /// 채워진 버튼의 모서리 반경입니다. (Figma: 16px)
+  /// 시작하기 버튼의 모서리 반경입니다. (Figma: 16px)
   static const double buttonRadius = 16;
 
-  /// 채워진 버튼의 높이입니다. (Figma: 56px)
+  /// 시작하기 버튼의 높이입니다. (Figma: 56px)
   static const double buttonHeight = 56;
+
+  /// 프로필 수정 버튼의 높이입니다. (Figma: 42px)
+  static const double outlinedButtonHeight = 42;
+
+  /// AppBar 높이입니다. (Figma 헤더: 64px)
+  static const double appBarHeight = 64;
+
+  /// 통계 카드의 모서리 반경입니다. (Figma: 12px)
+  static const double statRadius = 12;
 
   static final ColorScheme _lightColorScheme = const ColorScheme.light().copyWith(
     primary: AppColors.primary,
     onPrimary: AppColors.onPrimary,
     primaryContainer: AppColors.primaryContainer,
-    onPrimaryContainer: AppColors.onPrimaryContainer,
+    onPrimaryContainer: AppColors.primaryDark,
     surface: AppColors.surface,
     onSurface: AppColors.onSurface,
     onSurfaceVariant: AppColors.onSurfaceVariant,
@@ -49,24 +58,21 @@ class AppTheme {
       height: 36 / 28,
       letterSpacing: 0,
       fontWeight: FontWeight.w500,
-      color: AppColors.onSurface,
+      color: AppColors.onSurfaceStart,
     ),
-    headlineSmall: TextStyle(
-      fontSize: 24,
-      height: 32 / 24,
-      fontWeight: FontWeight.w500,
-      color: AppColors.onSurface,
-    ),
+    // 내 프로필, 무비러버 — Manrope 500 / 22 / 28 / 0
     titleLarge: TextStyle(
       fontSize: 22,
       height: 28 / 22,
+      letterSpacing: 0,
       fontWeight: FontWeight.w500,
       color: AppColors.onSurface,
     ),
+    // 선호하는 장르, 설명, 프로필 수정 — Manrope 500 / 16 / 24 / 0
     titleMedium: TextStyle(
       fontSize: 16,
       height: 24 / 16,
-      letterSpacing: 0.15,
+      letterSpacing: 0,
       fontWeight: FontWeight.w500,
       color: AppColors.onSurface,
     ),
@@ -78,12 +84,13 @@ class AppTheme {
       fontWeight: FontWeight.w500,
       color: AppColors.onSurface,
     ),
+    // 통계 라벨, 장르 Chip — Manrope 500 / 12 / 16 / 0
     bodySmall: TextStyle(
       fontSize: 12,
       height: 16 / 12,
-      letterSpacing: 0.4,
+      letterSpacing: 0,
       fontWeight: FontWeight.w500,
-      color: AppColors.onSurface,
+      color: AppColors.onSurfaceVariant,
     ),
     // 시작하기 — Manrope 500 / 14 / 20 / 0.1
     labelLarge: TextStyle(
@@ -92,6 +99,15 @@ class AppTheme {
       letterSpacing: 0.1,
       fontWeight: FontWeight.w500,
     ),
+  );
+
+  /// 통계 숫자 — Manrope 700 / 22 / 28 / 0
+  static const TextStyle statValue = TextStyle(
+    fontSize: 22,
+    height: 28 / 22,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+    color: AppColors.primaryDark,
   );
 
   static ThemeData get light {
@@ -109,6 +125,9 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
+        toolbarHeight: appBarHeight,
+        titleSpacing: 16,
+        titleTextStyle: _textTheme.titleLarge?.copyWith(color: colors.primary),
       ),
       cardTheme: CardThemeData(
         color: colors.surfaceContainer,
@@ -133,10 +152,13 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: colors.primary,
-          side: BorderSide(color: colors.outlineVariant),
-          textStyle: _textTheme.labelLarge,
+          side: BorderSide(color: colors.primary),
+          minimumSize: const Size(0, outlinedButtonHeight),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          textStyle: _textTheme.titleMedium,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(buttonRadius),
+            borderRadius: BorderRadius.circular(radius),
           ),
         ),
       ),

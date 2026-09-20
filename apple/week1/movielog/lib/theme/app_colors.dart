@@ -5,30 +5,35 @@ import 'package:flutter/material.dart';
 class AppColors {
   const AppColors._();
 
-  /// Primary — 로고, 강조 텍스트
+  /// Primary — AppBar 제목, 프로필 수정 버튼
   static const Color primary = Color(0xFF6750A4);
 
   /// Primary 위에 올라가는 색
   static const Color onPrimary = Color(0xFFFFFFFF);
 
-  /// 시작하기 등 채워진 버튼 배경
+  /// 시작하기 버튼 배경, 통계 숫자, 장르 Chip 텍스트
   static const Color primaryDark = Color(0xFF4F378A);
 
-  /// Primary의 옅은 배경 — 장르 Chip 등
-  static const Color primaryContainer = Color(0xFFEADDFF);
-  static const Color onPrimaryContainer = Color(0xFF21005D);
+  /// 장르 Chip 배경, 통계 카드 테두리
+  static const Color primaryContainer = Color(0xFFE9DDFF);
 
-  /// Surface — 화면 배경
+  /// 프로필 이미지 테두리
+  static const Color avatarBorder = Color(0xFFD0BCFF);
+
+  /// Surface — 화면 배경, AppBar 배경
   static const Color surface = Color(0xFFFAF9F5);
 
-  /// 제목 텍스트
-  static const Color onSurface = Color(0xFF1B1C1A);
+  /// 제목 텍스트 (무비러버, 선호하는 장르)
+  static const Color onSurface = Color(0xFF1D1B20);
 
-  /// 보조 텍스트 (캡션, 설명)
+  /// 시작 화면 제목 — Figma가 프로필과 다른 값을 씁니다.
+  static const Color onSurfaceStart = Color(0xFF1B1C1A);
+
+  /// 보조 텍스트 (캡션, 설명, 통계 라벨)
   static const Color onSurfaceVariant = Color(0xFF494551);
 
   /// 통계 카드 배경
-  static const Color surfaceContainer = Color(0xFFF3F1EC);
+  static const Color surfaceContainer = Color(0xFFF5F3F0);
 
   /// 테두리
   static const Color outline = Color(0xFF79747E);
