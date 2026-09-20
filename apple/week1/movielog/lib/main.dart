@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 // 프로필 화면을 확인할 때 아래 import와 home 값을 함께 바꿉니다.
-import 'screens/profile_screen.dart';
+// import 'screens/profile_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() => runApp(const MovieLogApp());
@@ -16,7 +16,7 @@ class MovieLogApp extends StatelessWidget {
     theme: AppTheme.light,
     // 1주차에는 화면 전환을 구현하지 않습니다.
     // 프로필 화면은 아래를 const ProfileScreen()으로 바꿔서 확인합니다.
-    home: const ProfileScreen(),
+    home: const StartScreen(),
   );
 }
 
