@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// W1-01 내 프로필 화면입니다.
-/// 1주차에는 화면 전환을 연결하지 않고 MaterialApp.home을 바꿔 확인합니다.
+/// 1주차에는 라우팅을 구현하지 않고 MaterialApp.home을 바꿔 확인합니다.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -40,7 +41,7 @@ class ProfileBody extends StatelessWidget {
   }
 }
 
-/// 프로필 사진, 닉네임, 소개글입니다.
+/// Step 4. 프로필 이미지, 닉네임, 소개입니다.
 class ProfileHeader extends StatelessWidget {
   const ProfileHeader({super.key});
 
@@ -51,15 +52,33 @@ class ProfileHeader extends StatelessWidget {
 
     return Column(
       children: [
+        // 프로필 이미지
         const CircleAvatar(
           radius: 56,
-          backgroundImage: AssetImage('assets/images/profile/profile_movielog.jpg'),
+          backgroundImage: AssetImage(
+            'assets/images/profile/profile_movielog.jpg',
+          ),
         ),
         const SizedBox(height: 16),
-        Text('무비러버', style: textTheme.titleLarge),
+        // 닉네임 옆에 SVG 아이콘 1개를 함께 표시합니다.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              'assets/icons/star.svg',
+              width: 20,
+              height: 20,
+              colorFilter: ColorFilter.mode(colors.primary, BlendMode.srcIn),
+              semanticsLabel: '별 아이콘',
+            ),
+            const SizedBox(width: 8),
+            Text('무비러버', style: textTheme.titleLarge),
+          ],
+        ),
         const SizedBox(height: 8),
+        // 소개
         Text(
-          '매주 주말엔 영화관으로 출근하는 프로 관람객. 좋은 영화를 보고 기록하는 것을 좋아합니다.',
+          '좋아하는 영화를 기록하고 있어요',
           textAlign: TextAlign.center,
           style: textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
         ),
@@ -68,42 +87,13 @@ class ProfileHeader extends StatelessWidget {
   }
 }
 
-/// 프로필 수정 버튼입니다. 1주차에는 동작을 연결하지 않습니다.
-class EditProfileButton extends StatelessWidget {
-  const EditProfileButton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: OutlinedButton(
-        onPressed: () {}, // 1주차에는 화면 이동을 연결하지 않습니다.
-        child: const Text('프로필 수정'),
-      ),
-    );
-  }
-}
-
-/// 본 영화 / 평점 / 즐겨찾기 통계입니다.
-class ProfileStats extends StatelessWidget {
-  const ProfileStats({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(child: ProfileStatItem(label: '본 영화', value: '342')),
-        SizedBox(width: 16),
-        Expanded(child: ProfileStatItem(label: '평점', value: '4.2')),
-        SizedBox(width: 16),
-        Expanded(child: ProfileStatItem(label: '즐겨찾기', value: '58')),
-      ],
-    );
-  }
-}
-
-/// 통계 항목 하나입니다.
-class ProfileStatItem extends StatelessWidget {
-  const ProfileStatItem({super.key, required this.label, required this.value});
+/// Step 5. 데이터만 바꿔 재사용하는 통계 항목입니다.
+class StatItem extends StatelessWidget {
+  const StatItem({
+    super.key,
+    required this.label,
+    required this.value,
+  });
 
   final String label;
   final String value;
@@ -114,24 +104,41 @@ class ProfileStatItem extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 12,
+      ),
       decoration: BoxDecoration(
-        color: colors.surfaceContainer,
-        borderRadius: BorderRadius.circular(8),
+        color: colors.surface,
+        border: Border.all(color: colors.primary),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
-          Text(
-            label,
-            style: textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: textTheme.titleLarge?.copyWith(color: colors.primary),
-          ),
+          Text(value, style: textTheme.titleLarge),
+          const SizedBox(height: 4),
+          Text(label),
         ],
       ),
+    );
+  }
+}
+
+/// StatItem을 가로로 배치한 통계 영역입니다.
+class ProfileStats extends StatelessWidget {
+  const ProfileStats({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        // Guided Practice에서 함께 배치한 첫 번째 항목입니다.
+        Expanded(child: StatItem(label: '본 영화', value: '24')),
+        SizedBox(width: 16),
+        Expanded(child: StatItem(label: '평점', value: '4.2')),
+        SizedBox(width: 16),
+        Expanded(child: StatItem(label: '즐겨찾기', value: '58')),
+      ],
     );
   }
 }
@@ -183,6 +190,21 @@ class GenreChip extends StatelessWidget {
       child: Text(
         label,
         style: textTheme.bodySmall?.copyWith(color: colors.onPrimaryContainer),
+      ),
+    );
+  }
+}
+
+/// 프로필 수정 버튼입니다. 1주차에는 동작을 연결하지 않습니다.
+class EditProfileButton extends StatelessWidget {
+  const EditProfileButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: OutlinedButton(
+        onPressed: () {}, // 1주차에는 화면 이동을 연결하지 않습니다.
+        child: const Text('프로필 수정'),
       ),
     );
   }
