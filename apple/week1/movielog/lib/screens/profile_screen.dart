@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../widgets/common_app_bar.dart';
+
 /// W1-01 내 프로필 화면입니다.
 /// 1주차에는 라우팅을 구현하지 않고 MaterialApp.home을 바꿔 확인합니다.
 class ProfileScreen extends StatelessWidget {
@@ -9,9 +11,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('내 프로필'),
-      ),
+      appBar: const CommonAppBar(title: '내 프로필'),
       body: const SafeArea(child: ProfileBody()),
     );
   }

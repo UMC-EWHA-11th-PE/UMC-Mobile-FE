@@ -10,8 +10,14 @@ class AppTheme {
   /// 8px을 기본 간격 단위로 사용합니다.
   static const double spacingUnit = 8;
 
-  /// Card, Button, Input의 모서리 반경입니다.
+  /// Card, Input의 모서리 반경입니다.
   static const double radius = 8;
+
+  /// 채워진 버튼의 모서리 반경입니다. (Figma: 16px)
+  static const double buttonRadius = 16;
+
+  /// 채워진 버튼의 높이입니다. (Figma: 56px)
+  static const double buttonHeight = 56;
 
   static final ColorScheme _lightColorScheme = const ColorScheme.light().copyWith(
     primary: AppColors.primary,
@@ -26,6 +32,68 @@ class AppTheme {
     outlineVariant: AppColors.outlineVariant,
   );
 
+  /// Figma Typography를 그대로 옮긴 TextTheme입니다.
+  /// height는 line-height / font-size로 계산합니다.
+  static const TextTheme _textTheme = TextTheme(
+    // FLUTTER 1주차 — Manrope 500 / 11 / 16 / 0.55
+    labelSmall: TextStyle(
+      fontSize: 11,
+      height: 16 / 11,
+      letterSpacing: 0.55,
+      fontWeight: FontWeight.w500,
+      color: AppColors.onSurfaceVariant,
+    ),
+    // 영화의 순간을 기록하세요 — Manrope 500 / 28 / 36 / 0
+    headlineMedium: TextStyle(
+      fontSize: 28,
+      height: 36 / 28,
+      letterSpacing: 0,
+      fontWeight: FontWeight.w500,
+      color: AppColors.onSurface,
+    ),
+    headlineSmall: TextStyle(
+      fontSize: 24,
+      height: 32 / 24,
+      fontWeight: FontWeight.w500,
+      color: AppColors.onSurface,
+    ),
+    titleLarge: TextStyle(
+      fontSize: 22,
+      height: 28 / 22,
+      fontWeight: FontWeight.w500,
+      color: AppColors.onSurface,
+    ),
+    titleMedium: TextStyle(
+      fontSize: 16,
+      height: 24 / 16,
+      letterSpacing: 0.15,
+      fontWeight: FontWeight.w500,
+      color: AppColors.onSurface,
+    ),
+    // 보고 싶은 영화부터… — Manrope 500 / 14 / 20 / 0.25
+    bodyMedium: TextStyle(
+      fontSize: 14,
+      height: 20 / 14,
+      letterSpacing: 0.25,
+      fontWeight: FontWeight.w500,
+      color: AppColors.onSurface,
+    ),
+    bodySmall: TextStyle(
+      fontSize: 12,
+      height: 16 / 12,
+      letterSpacing: 0.4,
+      fontWeight: FontWeight.w500,
+      color: AppColors.onSurface,
+    ),
+    // 시작하기 — Manrope 500 / 14 / 20 / 0.1
+    labelLarge: TextStyle(
+      fontSize: 14,
+      height: 20 / 14,
+      letterSpacing: 0.1,
+      fontWeight: FontWeight.w500,
+    ),
+  );
+
   static ThemeData get light {
     final colors = _lightColorScheme;
 
@@ -34,23 +102,13 @@ class AppTheme {
       fontFamily: 'Manrope',
       colorScheme: colors,
       scaffoldBackgroundColor: colors.surface,
+      textTheme: _textTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: colors.surface,
         foregroundColor: colors.primary,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-      ),
-      textTheme: const TextTheme(
-        headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
-        bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
-        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      ).apply(
-        bodyColor: colors.onSurface,
-        displayColor: colors.onSurface,
       ),
       cardTheme: CardThemeData(
         color: colors.surfaceContainer,
@@ -61,12 +119,14 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: colors.primary,
-          foregroundColor: colors.onPrimary,
+          backgroundColor: AppColors.primaryDark,
+          foregroundColor: AppColors.onPrimary,
           elevation: 0,
-          minimumSize: const Size(0, 48),
+          minimumSize: const Size(0, buttonHeight),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          textStyle: _textTheme.labelLarge,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radius),
+            borderRadius: BorderRadius.circular(buttonRadius),
           ),
         ),
       ),
@@ -74,8 +134,9 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: colors.primary,
           side: BorderSide(color: colors.outlineVariant),
+          textStyle: _textTheme.labelLarge,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radius),
+            borderRadius: BorderRadius.circular(buttonRadius),
           ),
         ),
       ),
