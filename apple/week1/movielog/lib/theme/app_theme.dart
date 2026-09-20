@@ -20,7 +20,7 @@ class AppTheme {
   static const double buttonHeight = 56;
 
   /// 프로필 수정 버튼의 높이입니다. (Figma: 42px)
-  static const double outlinedButtonHeight = 42;
+  static const double textButtonHeight = 42;
 
   /// AppBar 높이입니다. (Figma 헤더: 64px)
   static const double appBarHeight = 64;
@@ -149,11 +149,11 @@ class AppTheme {
           ),
         ),
       ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
           foregroundColor: colors.primary,
           side: BorderSide(color: colors.primary),
-          minimumSize: const Size(0, outlinedButtonHeight),
+          minimumSize: const Size(0, textButtonHeight),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           textStyle: _textTheme.titleMedium,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,

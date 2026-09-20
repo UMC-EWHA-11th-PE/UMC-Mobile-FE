@@ -94,10 +94,10 @@ class ProfileHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        // 버튼 마진 — padding-top 8
-        const Padding(
-          padding: EdgeInsets.only(top: 8),
-          child: EditProfileButton(),
+        // 버튼 마진 — 바깥 여백이므로 margin으로 줍니다. (padding-top 8)
+        Container(
+          margin: const EdgeInsets.only(top: 8),
+          child: const EditProfileButton(),
         ),
       ],
     );
@@ -111,7 +111,7 @@ class EditProfileButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton(
+    return TextButton(
       onPressed: () {}, // 1주차에는 화면 이동을 연결하지 않습니다.
       child: const Text('프로필 수정'),
     );
