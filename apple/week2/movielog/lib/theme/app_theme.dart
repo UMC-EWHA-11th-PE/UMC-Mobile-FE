@@ -59,13 +59,13 @@ class AppTheme {
       fontWeight: FontWeight.w500,
       color: AppColors.onSurface,
     ),
-    // 입력 텍스트, 플레이스홀더 — Manrope 500 / 16 / 100%
+    // 입력 텍스트 — Manrope 400 / 16 / 24 / 0
     bodyLarge: TextStyle(
       fontSize: 16,
-      height: 1,
+      height: 24 / 16,
       letterSpacing: 0,
-      fontWeight: FontWeight.w500,
-      color: AppColors.onSurface,
+      fontWeight: FontWeight.w400,
+      color: AppColors.inputText,
     ),
     // 오류 안내 문구 — Manrope 500 / 12 / 16
     bodySmall: TextStyle(
@@ -136,11 +136,21 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colors.surfaceContainer,
+        // 오류 상태(WidgetState.error)에서는 배경을 #FFDAD6으로 바꿉니다.
+        fillColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.error)
+              ? colors.errorContainer
+              : colors.surfaceContainer,
+        ),
         isDense: true,
-        // padding 9 / 16 / 8 / 16 — 텍스트 24 + 상하 패딩 + 테두리로 42px을 맞춥니다.
-        contentPadding: const EdgeInsets.fromLTRB(16, 9, 16, 8),
-        hintStyle: _textTheme.bodyLarge?.copyWith(color: AppColors.placeholder),
+        // padding 8 / 16 / 8 / 16 — 텍스트 24 + 상하 패딩 8로 42px을 맞춥니다.
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        // 플레이스홀더 — Manrope 500 / 16 #7A7582
+        hintStyle: _textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w500,
+          color: AppColors.placeholder,
+        ),
+        // 경고 문구 — Manrope 500 / 12 / 16 #B3261E, 입력창과 4px 간격(M3 기본값)
         errorStyle: _textTheme.bodySmall?.copyWith(color: colors.error),
         border: _inputBorder(colors.outlineVariant),
         enabledBorder: _inputBorder(colors.outlineVariant),

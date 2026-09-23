@@ -32,7 +32,12 @@ class AppColors {
   /// 입력창 테두리
   static const Color outlineVariant = Color(0xFFCBC4D2);
 
-  /// 오류 상태 — Material 3 기본값. Figma 값이 확정되면 여기만 바꿉니다.
+  /// 사용자가 입력한 텍스트 (플레이스홀더보다 진한 색)
+  static const Color inputText = Color(0xFF211F26);
+
+  /// 오류 상태 — 테두리, 느낌표 아이콘, 경고 문구
   static const Color error = Color(0xFFB3261E);
-  static const Color errorContainer = Color(0xFFF9DEDC);
+
+  /// 오류 상태 입력창 배경
+  static const Color errorContainer = Color(0xFFFFDAD6);
 }
