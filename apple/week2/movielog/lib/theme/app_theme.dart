@@ -143,8 +143,9 @@ class AppTheme {
               : colors.surfaceContainer,
         ),
         isDense: true,
-        // padding 8 / 16 / 8 / 16 — 텍스트 24 + 상하 패딩 8로 42px을 맞춥니다.
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        // Figma padding 8 / 16 / 8 / 16 + 테두리 1px = 42px.
+        // Flutter는 테두리를 패딩 안쪽에 그리므로 상하 9로 잡아야 높이 42가 됩니다.
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         // 플레이스홀더 — Manrope 500 / 16 #7A7582
         hintStyle: _textTheme.bodyLarge?.copyWith(
           fontWeight: FontWeight.w500,
@@ -157,7 +158,8 @@ class AppTheme {
         focusedBorder: _inputBorder(colors.primary),
         errorBorder: _inputBorder(colors.error),
         focusedErrorBorder: _inputBorder(colors.error),
-        suffixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 24),
+        // 상태 아이콘 20x20 + 오른쪽 여백 16 (Figma padding-right)
+        suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 20),
       ),
     );
   }

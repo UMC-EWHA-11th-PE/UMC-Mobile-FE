@@ -228,7 +228,7 @@ class _SignupScreenState extends State<SignupScreen> {
     if (value.isEmpty) return null;
     final hasError = validator(value) != null;
     return Padding(
-      padding: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.only(right: 16),
       child: Icon(
         hasError ? Icons.error_outline : Icons.check_circle,
         size: 20,
