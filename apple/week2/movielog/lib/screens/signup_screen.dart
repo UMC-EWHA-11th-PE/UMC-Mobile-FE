@@ -4,12 +4,20 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_app_bar.dart';
 
+/// 입력값을 검사해 오류 메시지를 돌려주는 함수 타입입니다. 통과하면 null입니다.
+typedef FieldValidator = String? Function(String? value);
+
 /// W2-01 회원가입 화면입니다. Figma 프레임 388 기준으로 배치합니다.
 ///
 /// Guided Practice 구조:
 /// - Step 1. Scaffold + SafeArea + SingleChildScrollView + Form(GlobalKey)
 /// - Step 2. Controller / FocusNode / 약관 동의 bool / dispose
 /// - Step 3. 닉네임 TextFormField (label, hint, 빈 값·2자 미만 검사, onChanged setState)
+///
+/// 화면은 의미 단위로 나뉩니다.
+/// - [_WelcomeMessage] 환영 문구
+/// - [_SignupFields] 닉네임·이메일·비밀번호 입력창 묶음
+/// - [_SignupFooter] 약관 동의, 가입하기 버튼, 로그인 링크
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -76,6 +84,7 @@ class _SignupScreenState extends State<SignupScreen> {
       _validatePassword(_passwordController.text) == null &&
       _agreedToTerms;
 
+  /// 가입하기 — Form 전체를 다시 검증한 뒤 통과했을 때만 진행합니다.
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
@@ -86,9 +95,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
       appBar: const CommonAppBar(title: '회원가입'),
       body: SafeArea(
@@ -111,15 +117,31 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _buildWelcome(textTheme, colors),
+                        const _WelcomeMessage(),
                         const SizedBox(height: 32),
-                        _buildInputs(textTheme, colors),
+                        _SignupFields(
+                          nicknameController: _nicknameController,
+                          emailController: _emailController,
+                          passwordController: _passwordController,
+                          passwordFocusNode: _passwordFocusNode,
+                          validateNickname: _validateNickname,
+                          validateEmail: _validateEmail,
+                          validatePassword: _validatePassword,
+                          // 입력이 바뀔 때마다 버튼 활성화와 상태 아이콘을 다시 계산합니다.
+                          onChanged: () => setState(() {}),
+                          onPasswordSubmitted: _canSubmit ? _submit : null,
+                        ),
                         const SizedBox(height: 32),
                         // 하단 컨테이너(Fill)는 남은 공간을 채우고 내용은 아래에 붙입니다.
                         Expanded(
                           child: Align(
                             alignment: Alignment.bottomCenter,
-                            child: _buildBottom(textTheme, colors),
+                            child: _SignupFooter(
+                              agreedToTerms: _agreedToTerms,
+                              onAgreedChanged: (value) =>
+                                  setState(() => _agreedToTerms = value),
+                              onSubmit: _canSubmit ? _submit : null,
+                            ),
                           ),
                         ),
                       ],
@@ -133,9 +155,17 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
     );
   }
+}
 
-  /// 환영합니다 — 356x64, padding-bottom 16, Manrope 500 16/24 #494551 center
-  Widget _buildWelcome(TextTheme textTheme, ColorScheme colors) {
+/// 환영합니다 — 356x64, padding-bottom 16, Manrope 500 16/24 #494551 center
+class _WelcomeMessage extends StatelessWidget {
+  const _WelcomeMessage();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Text(
@@ -145,9 +175,42 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
     );
   }
+}
 
-  /// 입력창 묶음 — gap 16
-  Widget _buildInputs(TextTheme textTheme, ColorScheme colors) {
+/// 입력창 묶음 — 닉네임·이메일·비밀번호, gap 16
+class _SignupFields extends StatelessWidget {
+  const _SignupFields({
+    required this.nicknameController,
+    required this.emailController,
+    required this.passwordController,
+    required this.passwordFocusNode,
+    required this.validateNickname,
+    required this.validateEmail,
+    required this.validatePassword,
+    required this.onChanged,
+    required this.onPasswordSubmitted,
+  });
+
+  final TextEditingController nicknameController;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final FocusNode passwordFocusNode;
+  final FieldValidator validateNickname;
+  final FieldValidator validateEmail;
+  final FieldValidator validatePassword;
+  final VoidCallback onChanged;
+
+  /// 비밀번호에서 키보드 완료를 눌렀을 때 실행합니다. null이면 아무 일도 하지 않습니다.
+  final VoidCallback? onPasswordSubmitted;
+
+  /// 비어 있으면 suffixIcon 자리를 아예 만들지 않습니다. (W2-01)
+  Widget? _statusIcon(String value, FieldValidator validator) =>
+      value.isEmpty ? null : _StatusIcon(value: value, validator: validator);
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -155,18 +218,14 @@ class _SignupScreenState extends State<SignupScreen> {
         _LabeledField(
           label: '닉네임',
           child: TextFormField(
-            controller: _nicknameController,
-            validator: _validateNickname,
-            onChanged: (_) => setState(() {}),
+            controller: nicknameController,
+            validator: validateNickname,
+            onChanged: (_) => onChanged(),
             textInputAction: TextInputAction.next,
             style: textTheme.bodyLarge,
             decoration: InputDecoration(
               hintText: '닉네임을 입력해주세요',
-              suffixIcon: _statusIcon(
-                _nicknameController.text,
-                _validateNickname,
-                colors,
-              ),
+              suffixIcon: _statusIcon(nicknameController.text, validateNickname),
             ),
           ),
         ),
@@ -175,20 +234,16 @@ class _SignupScreenState extends State<SignupScreen> {
         _LabeledField(
           label: '이메일',
           child: TextFormField(
-            controller: _emailController,
-            validator: _validateEmail,
-            onChanged: (_) => setState(() {}),
+            controller: emailController,
+            validator: validateEmail,
+            onChanged: (_) => onChanged(),
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
-            onFieldSubmitted: (_) => _passwordFocusNode.requestFocus(),
+            onFieldSubmitted: (_) => passwordFocusNode.requestFocus(),
             style: textTheme.bodyLarge,
             decoration: InputDecoration(
               hintText: '이메일 주소를 입력해주세요',
-              suffixIcon: _statusIcon(
-                _emailController.text,
-                _validateEmail,
-                colors,
-              ),
+              suffixIcon: _statusIcon(emailController.text, validateEmail),
             ),
           ),
         ),
@@ -197,38 +252,60 @@ class _SignupScreenState extends State<SignupScreen> {
         _LabeledField(
           label: '비밀번호',
           child: TextFormField(
-            controller: _passwordController,
-            focusNode: _passwordFocusNode,
-            validator: _validatePassword,
-            onChanged: (_) => setState(() {}),
+            controller: passwordController,
+            focusNode: passwordFocusNode,
+            validator: validatePassword,
+            onChanged: (_) => onChanged(),
             obscureText: true,
             textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) => _canSubmit ? _submit() : null,
+            onFieldSubmitted: (_) => onPasswordSubmitted?.call(),
             style: textTheme.bodyLarge,
             decoration: InputDecoration(
               hintText: '비밀번호를 입력해주세요',
-              suffixIcon: _statusIcon(
-                _passwordController.text,
-                _validatePassword,
-                colors,
-              ),
+              suffixIcon: _statusIcon(passwordController.text, validatePassword),
             ),
           ),
         ),
       ],
     );
   }
+}
 
-  /// 입력 상태에 따라 오른쪽 아이콘을 바꿉니다.
-  /// 비어 있으면 없음(W2-01), 오류면 ! (W2-02), 통과하면 체크(W2-03)
-  Widget? _statusIcon(
-    String value,
-    String? Function(String?) validator,
-    ColorScheme colors,
-  ) {
-    if (value.isEmpty) return null;
+/// 라벨(24px) + 입력창을 gap 4로 묶은 위젯입니다. (Figma: 356x70)
+class _LabeledField extends StatelessWidget {
+  const _LabeledField({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 4),
+        child,
+      ],
+    );
+  }
+}
+
+/// 입력 상태에 따라 오른쪽에 붙는 20x20 아이콘입니다.
+/// 오류면 ! (W2-02), 통과하면 체크(W2-03)
+class _StatusIcon extends StatelessWidget {
+  const _StatusIcon({required this.value, required this.validator});
+
+  final String value;
+  final FieldValidator validator;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final hasError = validator(value) != null;
+
     return Padding(
+      // 오른쪽 여백 16 (Figma padding-right)
       padding: const EdgeInsets.only(right: 16),
       // 공통 에셋 SVG를 쓰고 colorFilter로 상태 색을 입힙니다.
       child: SvgPicture.asset(
@@ -243,9 +320,28 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
     );
   }
+}
 
-  /// 하단 컨테이너 — padding-top 32, padding-bottom 16, gap 24
-  Widget _buildBottom(TextTheme textTheme, ColorScheme colors) {
+/// 하단 컨테이너 — 약관 동의, 가입하기 버튼, 로그인 링크
+/// padding-top 32, padding-bottom 16, gap 24
+class _SignupFooter extends StatelessWidget {
+  const _SignupFooter({
+    required this.agreedToTerms,
+    required this.onAgreedChanged,
+    required this.onSubmit,
+  });
+
+  final bool agreedToTerms;
+  final ValueChanged<bool> onAgreedChanged;
+
+  /// null이면 가입하기 버튼이 비활성 상태로 그려집니다.
+  final VoidCallback? onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Padding(
       padding: const EdgeInsets.only(top: 32, bottom: 16),
       child: Column(
@@ -255,7 +351,7 @@ class _SignupScreenState extends State<SignupScreen> {
         children: [
           // 필수 약관 — 체크박스 26x26 + 텍스트(left 32)
           InkWell(
-            onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
+            onTap: () => onAgreedChanged(!agreedToTerms),
             borderRadius: BorderRadius.circular(AppTheme.checkboxRadius),
             child: Row(
               children: [
@@ -263,9 +359,8 @@ class _SignupScreenState extends State<SignupScreen> {
                   width: AppTheme.checkboxSize,
                   height: AppTheme.checkboxSize,
                   child: Checkbox(
-                    value: _agreedToTerms,
-                    onChanged: (value) =>
-                        setState(() => _agreedToTerms = value ?? false),
+                    value: agreedToTerms,
+                    onChanged: (value) => onAgreedChanged(value ?? false),
                   ),
                 ),
                 const SizedBox(width: 32 - AppTheme.checkboxSize),
@@ -280,7 +375,7 @@ class _SignupScreenState extends State<SignupScreen> {
             child: SizedBox(
               height: AppTheme.buttonHeight,
               child: ElevatedButton(
-                onPressed: _canSubmit ? _submit : null,
+                onPressed: onSubmit,
                 child: const Text('가입하기'),
               ),
             ),
@@ -308,26 +403,6 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// 라벨(24px) + 입력창을 gap 4로 묶은 위젯입니다. (Figma: 356x70)
-class _LabeledField extends StatelessWidget {
-  const _LabeledField({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 4),
-        child,
-      ],
     );
   }
 }
