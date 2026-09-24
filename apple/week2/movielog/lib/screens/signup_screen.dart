@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/common_app_bar.dart';
@@ -229,10 +230,16 @@ class _SignupScreenState extends State<SignupScreen> {
     final hasError = validator(value) != null;
     return Padding(
       padding: const EdgeInsets.only(right: 16),
-      child: Icon(
-        hasError ? Icons.error_outline : Icons.check_circle,
-        size: 20,
-        color: hasError ? colors.error : colors.primary,
+      // 공통 에셋 SVG를 쓰고 colorFilter로 상태 색을 입힙니다.
+      child: SvgPicture.asset(
+        hasError ? 'assets/icons/error.svg' : 'assets/icons/check_circle_filled.svg',
+        width: 20,
+        height: 20,
+        colorFilter: ColorFilter.mode(
+          hasError ? colors.error : colors.primary,
+          BlendMode.srcIn,
+        ),
+        semanticsLabel: hasError ? '입력 오류' : '입력 확인',
       ),
     );
   }

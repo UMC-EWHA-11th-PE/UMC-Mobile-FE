@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../theme/app_theme.dart';
 
@@ -21,6 +22,8 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return AppBar(
       title: Text(title),
       // padding-left 8 + 40x40 버튼
@@ -29,14 +32,16 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
         padding: const EdgeInsets.only(left: 8),
         child: IconButton(
           onPressed: onBack ?? () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back, size: 16),
-          iconSize: 16,
+          // 화살표 아이콘 컨테이너 16x16 — 공통 에셋 SVG 사용
+          icon: SvgPicture.asset(
+            'assets/icons/arrow_back.svg',
+            width: 16,
+            height: 16,
+            colorFilter: ColorFilter.mode(colors.onSurface, BlendMode.srcIn),
+          ),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-          style: IconButton.styleFrom(
-            shape: const CircleBorder(),
-            foregroundColor: Theme.of(context).colorScheme.onSurface,
-          ),
+          style: IconButton.styleFrom(shape: const CircleBorder()),
           tooltip: '뒤로가기',
         ),
       ),
