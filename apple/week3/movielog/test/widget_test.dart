@@ -17,7 +17,8 @@ void main() {
     await tester.tap(find.text('회원가입'));
     await tester.pumpAndSettle();
 
-    expect(find.text('회원가입 화면'), findsOneWidget);
+    expect(find.text('환영합니다!\n간단한 정보만 입력하고 시작해보세요.'), findsOneWidget);
+    expect(find.text('가입하기'), findsOneWidget);
   });
 
   testWidgets('시작하기 후 하단 탭으로 홈/영화/마이를 이동한다', (WidgetTester tester) async {
