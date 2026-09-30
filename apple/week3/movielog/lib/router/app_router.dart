@@ -1,5 +1,9 @@
 import 'package:go_router/go_router.dart';
 
+import '../home_screen.dart';
+import '../main_screen.dart';
+import '../movie_list_screen.dart';
+import '../my_page_screen.dart';
 import '../register_screen.dart';
 import '../start_screen.dart';
 
@@ -7,30 +11,47 @@ import '../start_screen.dart';
 class AppRouter {
   AppRouter._();
 
-  // Route 경로
-  static const String startPath = '/';
-  static const String registerPath = '/register';
-
-  // Route 이름 (context.goNamed / pushNamed 에서 사용)
-  static const String startName = 'start';
-  static const String registerName = 'register';
-
-  static final GoRouter router = GoRouter(
-    // 앱을 처음 실행했을 때 보여줄 경로
-    initialLocation: startPath,
-    // 라우팅 로그를 콘솔에 출력 (개발 중 확인용)
-    debugLogDiagnostics: true,
+  static final router = GoRouter(
+    initialLocation: '/start',
     routes: [
       GoRoute(
-        path: startPath,
-        name: startName,
+        path: '/start',
         builder: (context, state) => const StartScreen(),
       ),
       GoRoute(
-        path: registerPath,
-        name: registerName,
+        path: '/register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      // 하단 탭(홈/영화/마이)을 공유하는 화면들
+      ShellRoute(
+        builder: (context, state, child) {
+          return MainScreen(
+            currentIndex: indexFromLocation(state.uri.path),
+            child: child,
+          );
+        },
+        routes: [
+          GoRoute(
+            path: '/home',
+            builder: (context, state) => const HomeScreen(),
+          ),
+          GoRoute(
+            path: '/movies',
+            builder: (context, state) => const MovieListScreen(),
+          ),
+          GoRoute(
+            path: '/my',
+            builder: (context, state) => const MyPageScreen(),
+          ),
+        ],
       ),
     ],
   );
+
+  static int indexFromLocation(String path) {
+    if (path.startsWith('/movies')) return 1;
+    if (path.startsWith('/my')) return 2;
+
+    return 0;
+  }
 }
