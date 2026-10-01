@@ -85,7 +85,7 @@ void main() {
         .descendant(of: find.byType(Dialog), matching: find.byType(Material))
         .first;
 
-    testWidgets('Figma 크기를 따르고 다시 선택하기로 0점이 된다', (tester) async {
+    testWidgets('Figma 크기를 따르고, 선택값에 따라 확인 버튼이 켜지고 꺼진다', (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -139,8 +139,14 @@ void main() {
       expect(tester.getSize(confirm), const Size(294, 48));
       expect(tester.getTopLeft(confirm).dy, closeTo(456, 0.01));
 
-      // 네 번째 별 가운데를 누르면 3.5점 → W3-06: 342 x 260, 다시 선택하기 표시
-      await tester.tapAt(tester.getCenter(stars.at(3)));
+      // 별을 고르기 전에는 확인 버튼 비활성
+      expect(tester.widget<ElevatedButton>(confirm).onPressed, isNull);
+
+      // 네 번째 별 왼쪽을 누르면 3.5점 → W3-06: 342 x 260, 다시 선택하기 표시
+      // 별 왼쪽 부분을 눌러 반 칸(3.5) 선택
+      await tester.tapAt(
+        tester.getRect(stars.at(3)).centerLeft + const Offset(6, 0),
+      );
       await tester.pumpAndSettle();
       expect(find.text('다시 선택하기'), findsOneWidget);
       expect(tester.getSize(dialogBox()), const Size(342, 260));
@@ -160,9 +166,20 @@ void main() {
       expect(find.text('다시 선택하기'), findsNothing);
       expect(tester.getSize(dialogBox()), const Size(342, 212));
 
+      // 0점이면 확인 버튼 비활성
+      ElevatedButton confirmButton() => tester.widget<ElevatedButton>(confirm);
+      expect(confirmButton().onPressed, isNull);
+
+      // 다시 별을 고르면 확인 버튼 활성 → 선택값 반환
+      // 별 왼쪽 부분을 눌러 반 칸(3.5) 선택
+      await tester.tapAt(
+        tester.getRect(stars.at(3)).centerLeft + const Offset(6, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(confirmButton().onPressed, isNotNull);
       await tester.tap(find.text('확인'));
       await tester.pumpAndSettle();
-      expect(result, 0);
+      expect(result, 3.5);
     });
   });
 }

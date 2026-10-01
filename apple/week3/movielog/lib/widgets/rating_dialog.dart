@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'movie_rating_input.dart';
 
@@ -8,6 +9,7 @@ import 'movie_rating_input.dart';
 ///
 /// - W3-05 (Required): 342 x 212 — 제목, 별점, 확인
 /// - W3-06 (Challenge): 342 x 260 — 별점을 고르면 '다시 선택하기'가 나타나 0점으로 되돌림
+/// - 별을 고르기 전에는 확인 버튼이 비활성
 class RatingDialog extends StatefulWidget {
   const RatingDialog({super.key});
 
@@ -96,12 +98,18 @@ class _RatingDialogState extends State<RatingDialog> {
               SizedBox(
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context, rating);
-                  },
+                  // 별을 고르기 전(0점)에는 확인 버튼을 끕니다. — 선택값과 버튼 상태가 함께 갱신
+                  onPressed: rating > 0
+                      ? () {
+                          Navigator.pop(context, rating);
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.primary,
                     foregroundColor: colors.onPrimary,
+                    // 비활성 — 배경 #CCC2DC (2주차 가입하기 비활성과 같은 토큰)
+                    disabledBackgroundColor: AppColors.primaryDisabled,
+                    disabledForegroundColor: colors.onPrimary,
                     elevation: 0,
                     minimumSize: const Size.fromHeight(48),
                     padding: EdgeInsets.zero,
