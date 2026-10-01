@@ -97,19 +97,34 @@ void main() {
       matching: find.byType(ClipRRect),
     );
     expect(tester.getSize(banner), const Size(356, 534));
-    expect(tester.getTopLeft(banner) - tester.getTopLeft(greeting), const Offset(0, 72 + 16));
+    expect(
+      tester.getTopLeft(banner) - tester.getTopLeft(greeting),
+      const Offset(0, 72 + 16),
+    );
 
     // 상세보기 버튼 308 x 48, 배너 하단에서 24 위
-    final button = find.ancestor(of: find.text('상세보기'), matching: find.byType(InkWell));
+    final button = find.ancestor(
+      of: find.text('상세보기'),
+      matching: find.byType(InkWell),
+    );
     expect(tester.getSize(button), const Size(308, 48));
-    expect(tester.getBottomLeft(banner).dy - tester.getBottomLeft(button).dy, 24);
+    expect(
+      tester.getBottomLeft(banner).dy - tester.getBottomLeft(button).dy,
+      24,
+    );
 
     // 추천 신작 칩 높이 34 (너비는 글꼴에 따라 달라짐)
-    final chip = find.ancestor(of: find.text('추천 신작'), matching: find.byType(BackdropFilter));
+    final chip = find.ancestor(
+      of: find.text('추천 신작'),
+      matching: find.byType(BackdropFilter),
+    );
     expect(tester.getSize(chip).height, 34);
 
     // 배너 하단 영역 218 = 칩부터 버튼까지 + padding 24 x 2
-    expect(tester.getBottomLeft(banner).dy - tester.getTopLeft(chip).dy, 218 - 24);
+    expect(
+      tester.getBottomLeft(banner).dy - tester.getTopLeft(chip).dy,
+      218 - 24,
+    );
   });
 
   testWidgets('인기 영화 섹션이 Figma 크기를 따른다', (WidgetTester tester) async {
@@ -142,10 +157,18 @@ void main() {
     expect(tester.getTopLeft(card).dy - tester.getBottomLeft(title).dy, 16);
 
     // 포스터 140 x 200, 순위 칩은 포스터 왼쪽 위에서 8, 높이 26
-    final poster = find.ancestor(of: find.text('1'), matching: find.byType(ClipRRect)).last;
+    final poster = find
+        .ancestor(of: find.text('1'), matching: find.byType(ClipRRect))
+        .last;
     expect(tester.getSize(poster), const Size(140, 200));
-    final rankChip = find.ancestor(of: find.text('1'), matching: find.byType(BackdropFilter));
-    expect(tester.getTopLeft(rankChip) - tester.getTopLeft(poster), const Offset(8, 8));
+    final rankChip = find.ancestor(
+      of: find.text('1'),
+      matching: find.byType(BackdropFilter),
+    );
+    expect(
+      tester.getTopLeft(rankChip) - tester.getTopLeft(poster),
+      const Offset(8, 8),
+    );
     expect(tester.getSize(rankChip).height, 26);
 
     // 다음 카드와 간격 16
@@ -205,7 +228,9 @@ void main() {
       expect(find.text('영화'), findsNWidgets(2)); // 헤더 + 하단 네비
 
       // 필터 칩 높이 32, 헤더 아래 8
-      final allChip = find.ancestor(of: find.text('전체'), matching: find.byType(Material)).first;
+      final allChip = find
+          .ancestor(of: find.text('전체'), matching: find.byType(Material))
+          .first;
       expect(tester.getSize(allChip).height, 32);
       expect(tester.getTopLeft(allChip), const Offset(16, 64 + 8));
 
@@ -214,7 +239,10 @@ void main() {
       final second = itemOf('우주의 끝에서');
       final third = itemOf('기억의 숲');
       expect(tester.getSize(first), const Size(171, 316.5));
-      final poster = find.ancestor(of: find.text('★ 4.8'), matching: find.byType(AspectRatio));
+      final poster = find.ancestor(
+        of: find.text('★ 4.8'),
+        matching: find.byType(AspectRatio),
+      );
       expect(tester.getSize(poster), const Size(171, 256.5));
 
       // 필터 칩 영역(40) 아래 16에서 그리드 시작
@@ -225,8 +253,14 @@ void main() {
       expect(tester.getTopLeft(third).dy - tester.getBottomLeft(first).dy, 24);
 
       // 별점 칩: 포스터 오른쪽 위에서 8, 높이 24
-      final ratingChip = find.ancestor(of: find.text('★ 4.8'), matching: find.byType(BackdropFilter));
-      expect(tester.getTopRight(ratingChip) - tester.getTopRight(poster), const Offset(-8, 8));
+      final ratingChip = find.ancestor(
+        of: find.text('★ 4.8'),
+        matching: find.byType(BackdropFilter),
+      );
+      expect(
+        tester.getTopRight(ratingChip) - tester.getTopRight(poster),
+        const Offset(-8, 8),
+      );
       expect(tester.getSize(ratingChip).height, 24);
 
       // 소제목
@@ -245,5 +279,145 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('별빛 아래 우리'), findsOneWidget);
     });
+  });
+
+  group('영화 상세', () {
+    Future<void> openDetail(WidgetTester tester) async {
+      // W3-03 Figma 프레임 너비 390
+      tester.view.physicalSize = const Size(390, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(const MovieLogApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('시작하기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('영화'));
+      await tester.pumpAndSettle();
+      // 영화 목록에서 첫 번째 카드를 눌러 상세로 이동
+      await tester.tap(find.text('별빛 아래 우리'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Figma 크기와 내용을 따른다', (WidgetTester tester) async {
+      await openDetail(tester);
+
+      expect(find.text('Cinema Archive'), findsOneWidget);
+      // 상세는 하단 탭 없이 전체 화면
+      expect(find.text('마이'), findsNothing);
+
+      // 히어로 390 x 585, 헤더(64) 바로 아래
+      final hero = find.byType(AspectRatio);
+      expect(tester.getSize(hero), const Size(390, 585));
+      expect(tester.getTopLeft(hero), const Offset(0, 64));
+
+      // 인포 섹션: 제목은 히어로 아래 24, 왼쪽 16
+      final title = find.text('별빛 아래 우리');
+      expect(tester.getTopLeft(title), const Offset(16, 64 + 585 + 24));
+      expect(tester.getSize(title).height, 36);
+      expect(find.text('2024 • 로맨스/드라마 • 124분'), findsOneWidget);
+      expect(find.text('4.5'), findsOneWidget);
+      expect(find.text('(1,245)'), findsOneWidget);
+
+      // 장르 칩 높이 28
+      expect(tester.getSize(find.text('감동적인').hitTestable()).height, 20);
+      final chip = find
+          .ancestor(of: find.text('감동적인'), matching: find.byType(Container))
+          .first;
+      expect(tester.getSize(chip).height, 28);
+
+      // 인포 섹션 216 → 시놉시스는 히어로 아래 216에서 시작 (padding 16 + border 1)
+      final synopsisTitle = find.text('시놉시스');
+      expect(tester.getTopLeft(synopsisTitle).dy, 64 + 585 + 216 + 1 + 16);
+
+      // 하단 고정 버튼: 높이 48, 영역 높이 81
+      final bookmark = find.ancestor(
+        of: find.text('즐겨찾기'),
+        matching: find.byType(InkWell),
+      );
+      expect(tester.getSize(bookmark).height, 48);
+      expect(1400 - tester.getTopLeft(bookmark).dy, 48 + 16);
+      final actionBar = find
+          .ancestor(of: bookmark, matching: find.byType(SafeArea))
+          .first;
+      expect(
+        tester
+            .getSize(
+              find
+                  .ancestor(of: actionBar, matching: find.byType(Container))
+                  .first,
+            )
+            .height,
+        81,
+      );
+    });
+
+    testWidgets('뒤로가기를 누르면 영화 목록으로 돌아간다', (WidgetTester tester) async {
+      await openDetail(tester);
+
+      await tester.tap(find.byTooltip('뒤로가기'));
+      await tester.pumpAndSettle();
+      expect(find.text('Cinema Archive'), findsNothing);
+      expect(find.text('우주의 끝에서'), findsOneWidget);
+    });
+
+    testWidgets('즐겨찾기를 누르면 상태가 바뀌고 안내 메시지가 뜬다', (WidgetTester tester) async {
+      await openDetail(tester);
+
+      await tester.tap(find.text('즐겨찾기'));
+      await tester.pump();
+      expect(find.text('즐겨찾기에 추가했습니다.'), findsOneWidget);
+      final toggle = tester.getSemantics(
+        find
+            .ancestor(of: find.text('즐겨찾기'), matching: find.byType(Semantics))
+            .first,
+      );
+      expect(toggle.flagsCollection.isToggled, isNotNull);
+
+      await tester.tap(find.text('즐겨찾기'));
+      await tester.pump();
+      expect(find.text('즐겨찾기를 해제했습니다.'), findsOneWidget);
+    });
+
+    testWidgets('평점 남기기를 누르면 별점 Dialog가 뜨고 결과를 안내한다', (
+      WidgetTester tester,
+    ) async {
+      await openDetail(tester);
+
+      await tester.tap(find.text('평점 남기기'));
+      await tester.pumpAndSettle();
+      expect(find.text('영화는 어떠셨나요?'), findsOneWidget);
+
+      // 다섯 번째 별의 오른쪽 끝 → 5점
+      final dialogStar = find
+          .descendant(
+            of: find.byType(Dialog),
+            matching: find.byIcon(Icons.star),
+          )
+          .last;
+      final rect = tester.getRect(dialogStar);
+      await tester.tapAt(rect.centerRight - const Offset(2, 0));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('확인'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('평점 5.0점을 남겼습니다.'), findsOneWidget);
+    });
+  });
+
+  testWidgets('홈 배너 상세보기를 누르면 영화 상세로 이동한다', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('시작하기'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('상세보기'));
+    await tester.pumpAndSettle();
+    expect(find.text('Cinema Archive'), findsOneWidget);
+    expect(find.text('(1,245)'), findsOneWidget);
   });
 }

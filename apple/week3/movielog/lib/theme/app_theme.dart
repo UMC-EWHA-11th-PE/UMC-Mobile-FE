@@ -45,6 +45,8 @@ class AppTheme {
     // 영화 목록 별점 칩
     inverseSurface: AppColors.inverseSurface,
     onInverseSurface: AppColors.onInverseSurface,
+    // 영화 상세 히어로·장르 칩 배경
+    surfaceContainerHigh: AppColors.surfaceContainerHigh,
     // 하단 네비게이션
     surfaceContainerLowest: AppColors.navBackground,
     surfaceContainerHighest: AppColors.containerHighest,

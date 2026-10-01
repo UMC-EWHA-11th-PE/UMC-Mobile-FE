@@ -65,6 +65,13 @@ class AppColors {
   /// 영화 목록 포스터 위 별점 칩 글자
   static const Color onInverseSurface = Color(0xFFF5EFF7);
 
+  /// 영화 상세 히어로 배경, 장르 칩 배경
+  static const Color surfaceContainerHigh = Color(0xFFE3E2DF);
+
+  /// 영화 상세 제목·시놉시스 제목·평점 숫자 (#1B1C1A)
+  /// 다른 화면의 onSurface(#1D1B20)와 미세하게 달라 상세 화면에서만 직접 사용합니다.
+  static const Color detailText = Color(0xFF1B1C1A);
+
   // ---------------------------------------------------------------------------
   // 이미지 위에 올라가는 색 — 배경이 항상 어두운 포스터라 테마와 관계없이 고정입니다.
   // ---------------------------------------------------------------------------

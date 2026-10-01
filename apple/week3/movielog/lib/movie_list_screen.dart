@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'data/movie.dart';
 import 'widgets/main_header.dart';
@@ -132,7 +133,11 @@ class _GenreChip extends StatelessWidget {
         decoration: const ShapeDecoration(
           shape: StadiumBorder(),
           shadows: [
-            BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x0D000000)),
+            BoxShadow(
+              offset: Offset(0, 1),
+              blurRadius: 2,
+              color: Color(0x0D000000),
+            ),
           ],
         ),
         child: Material(
@@ -171,78 +176,87 @@ class _MovieGridItem extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 배경+그림자 — radius 12, #E6E0E9, box-shadow 0 1 2 #0000000D
-        AspectRatio(
-          aspectRatio: 2 / 3,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x0D000000)),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.asset(
-                    movie.posterAsset,
-                    fit: BoxFit.cover,
-                    // 포스터가 없으면 배경색(#E6E0E9)만 보여줍니다.
-                    errorBuilder: (context, error, stackTrace) =>
-                        const SizedBox.shrink(),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: _RatingChip(rating: movie.rating),
+    // 카드를 누르면 영화 상세로 이동 (뒤로가기로 목록 복귀)
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => context.push('/movies/${movie.id}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 배경+그림자 — radius 12, #E6E0E9, box-shadow 0 1 2 #0000000D
+          AspectRatio(
+            aspectRatio: 2 / 3,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                    offset: Offset(0, 1),
+                    blurRadius: 2,
+                    color: Color(0x0D000000),
                   ),
                 ],
               ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        // 밑에 제목 — padding-top 8, 제목·소제목 각 24
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Manrope 500 / 16 / 24, #1D1B20
-              SizedBox(
-                height: 24,
-                child: Text(
-                  movie.title,
-                  style: textTheme.titleMedium,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.asset(
+                      movie.posterAsset,
+                      fit: BoxFit.cover,
+                      // 포스터가 없으면 배경색(#E6E0E9)만 보여줍니다.
+                      errorBuilder: (context, error, stackTrace) =>
+                          const SizedBox.shrink(),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: _RatingChip(rating: movie.rating),
+                    ),
+                  ],
                 ),
               ),
-              // 소제목 — opacity 0.8, Manrope 400 / 16 / 24, #494551
-              SizedBox(
-                height: 24,
-                child: Opacity(
-                  opacity: 0.8,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // 밑에 제목 — padding-top 8, 제목·소제목 각 24
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Manrope 500 / 16 / 24, #1D1B20
+                SizedBox(
+                  height: 24,
                   child: Text(
-                    '${movie.year} · ${movie.genre}',
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                    movie.title,
+                    style: textTheme.titleMedium,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ),
-            ],
+                // 소제목 — opacity 0.8, Manrope 400 / 16 / 24, #494551
+                SizedBox(
+                  height: 24,
+                  child: Opacity(
+                    opacity: 0.8,
+                    child: Text(
+                      '${movie.year} · ${movie.genre}',
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -24,7 +24,8 @@ class HomeScreen extends StatelessWidget {
   static const _featuredMeta = '로맨스 · 드라마 · 120분';
 
   /// 배너 배경 — 목록용 세로 포스터와 달리 가로형 이미지를 사용합니다.
-  static const _featuredBackdrop = 'assets/images/posters/hero_under_the_starlight.jpg';
+  static const _featuredBackdrop =
+      'assets/images/posters/hero_under_the_starlight.jpg';
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +164,9 @@ class _FeaturedBanner extends StatelessWidget {
                           ),
                         ),
                       ),
-                      _DetailButton(onPressed: () {}), // 상세 화면은 아직 연결하지 않습니다.
+                      _DetailButton(
+                        onPressed: () => context.push('/movies/${movie.id}'),
+                      ),
                     ],
                   ),
                 ),
@@ -192,7 +195,11 @@ class _BannerChip extends StatelessWidget {
       decoration: const ShapeDecoration(
         shape: StadiumBorder(),
         shadows: [
-          BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x0D000000)),
+          BoxShadow(
+            offset: Offset(0, 1),
+            blurRadius: 2,
+            color: Color(0x0D000000),
+          ),
         ],
       ),
       child: ClipRRect(
@@ -279,7 +286,9 @@ class _DetailButton extends StatelessWidget {
                 // Manrope 500 / 16 / 24, #FFFFFF
                 Text(
                   '상세보기',
-                  style: textTheme.titleMedium?.copyWith(color: AppColors.onImage),
+                  style: textTheme.titleMedium?.copyWith(
+                    color: AppColors.onImage,
+                  ),
                 ),
               ],
             ),
@@ -362,7 +371,9 @@ class _SeeAllButton extends StatelessWidget {
           // Manrope 500 / 16 / 24
           Text(
             '전체보기',
-            style: textTheme.titleMedium?.copyWith(color: colors.onPrimaryContainer),
+            style: textTheme.titleMedium?.copyWith(
+              color: colors.onPrimaryContainer,
+            ),
           ),
           const SizedBox(width: 4),
           // 아이콘 4.93 x 8
@@ -370,7 +381,10 @@ class _SeeAllButton extends StatelessWidget {
             'assets/icons/chevron_right.svg',
             width: 4.933,
             height: 8,
-            colorFilter: ColorFilter.mode(colors.onPrimaryContainer, BlendMode.srcIn),
+            colorFilter: ColorFilter.mode(
+              colors.onPrimaryContainer,
+              BlendMode.srcIn,
+            ),
           ),
         ],
       ),
@@ -457,7 +471,10 @@ class _PopularMovieCard extends StatelessWidget {
                     'assets/icons/rating_star_filled.svg',
                     width: 11.667,
                     height: 11.083,
-                    colorFilter: ColorFilter.mode(colors.tertiary, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                      colors.tertiary,
+                      BlendMode.srcIn,
+                    ),
                   ),
                   const SizedBox(width: 4),
                   // Manrope 400 / 12 / 16, #494551
