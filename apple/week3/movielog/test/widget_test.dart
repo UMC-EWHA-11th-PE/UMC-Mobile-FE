@@ -27,7 +27,7 @@ void main() {
 
     await tester.tap(find.text('시작하기'));
     await tester.pumpAndSettle();
-    expect(find.text('홈 화면'), findsOneWidget);
+    expect(find.text('오늘은 어떤\n영화를 볼까요?'), findsOneWidget);
 
     await tester.tap(find.text('영화'));
     await tester.pumpAndSettle();
@@ -74,5 +74,41 @@ void main() {
     final search = find.byTooltip('검색');
     expect(tester.getSize(search), const Size(34, 34));
     expect(tester.getTopRight(search).dx, 800 - 16);
+  });
+
+  testWidgets('홈 인사말·배너가 Figma 크기를 따른다', (WidgetTester tester) async {
+    // Figma 프레임 내부 너비 388에 맞춰 화면 크기를 고정
+    tester.view.physicalSize = const Size(388, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('시작하기'));
+    await tester.pumpAndSettle();
+
+    // greeting section 388 x 104
+    final greeting = find.text('오늘은 어떤\n영화를 볼까요?');
+    expect(tester.getSize(greeting), const Size(356, 72));
+
+    // 배너 356 x 534, 인사말 바로 아래(좌우 16)
+    final banner = find.ancestor(
+      of: find.text('별빛 아래 우리'),
+      matching: find.byType(ClipRRect),
+    );
+    expect(tester.getSize(banner), const Size(356, 534));
+    expect(tester.getTopLeft(banner) - tester.getTopLeft(greeting), const Offset(0, 72 + 16));
+
+    // 상세보기 버튼 308 x 48, 배너 하단에서 24 위
+    final button = find.ancestor(of: find.text('상세보기'), matching: find.byType(InkWell));
+    expect(tester.getSize(button), const Size(308, 48));
+    expect(tester.getBottomLeft(banner).dy - tester.getBottomLeft(button).dy, 24);
+
+    // 추천 신작 칩 높이 34 (너비는 글꼴에 따라 달라짐)
+    final chip = find.ancestor(of: find.text('추천 신작'), matching: find.byType(BackdropFilter));
+    expect(tester.getSize(chip).height, 34);
+
+    // 배너 하단 영역 218 = 칩부터 버튼까지 + padding 24 x 2
+    expect(tester.getBottomLeft(banner).dy - tester.getTopLeft(chip).dy, 218 - 24);
   });
 }

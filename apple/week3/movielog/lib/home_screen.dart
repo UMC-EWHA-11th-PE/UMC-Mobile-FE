@@ -1,15 +1,271 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import 'data/movie.dart';
+import 'theme/app_colors.dart';
+
 /// W3-01 영화 홈 화면입니다.
+///
+/// 화면은 의미 단위로 나뉩니다.
+/// - [_HomeHeader] MovieLog 로고, 검색 버튼
+/// - [_GreetingSection] 오늘은 어떤 영화를 볼까요?
+/// - [_FeaturedBanner] 추천 신작 배너
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  /// 배너 보조 문구 — Mock 데이터에 러닝타임·복수 장르가 없어 Figma 문구를 그대로 사용합니다.
+  static const _featuredMeta = '로맨스 · 드라마 · 120분';
+
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: _HomeHeader(),
-      body: Center(child: Text('홈 화면')),
+    return Scaffold(
+      appBar: const _HomeHeader(),
+      body: ListView(
+        // Figma padding-bottom 96 = 하단 네비(80)에 가려지는 영역 + 여백 16.
+        // 여기서는 네비가 본문을 덮지 않으므로 여백 16만 둡니다.
+        padding: const EdgeInsets.only(bottom: 16),
+        children: [
+          const _GreetingSection(),
+          // 중간 섹션 — padding 0 / 16 / 24 / 16
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            child: _FeaturedBanner(movie: movies.first, meta: _featuredMeta),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 이미지 위 텍스트 그림자 — 0 4 3 #00000012, 0 2 2 #0000000F
+const _textShadows = [
+  Shadow(offset: Offset(0, 4), blurRadius: 3, color: Color(0x12000000)),
+  Shadow(offset: Offset(0, 2), blurRadius: 2, color: Color(0x0F000000)),
+];
+
+/// greeting section — 388 x 104, padding 16
+class _GreetingSection extends StatelessWidget {
+  const _GreetingSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      // Manrope 500 / 28 / 36 / -0.7, #1D1B20
+      child: Text(
+        '오늘은 어떤\n영화를 볼까요?',
+        style: textTheme.titleMedium?.copyWith(
+          fontSize: 28,
+          height: 36 / 28,
+          letterSpacing: -0.7,
+          color: colors.onSurface,
+        ),
+      ),
+    );
+  }
+}
+
+/// 중간 배너 — 356 x 534, radius 24, 배경 #E6E0E9
+/// 포스터 → 오버레이(#000000B2) → 하단 정보(칩, 제목, 설명, 버튼) 순으로 쌓습니다.
+class _FeaturedBanner extends StatelessWidget {
+  const _FeaturedBanner({required this.movie, required this.meta});
+
+  final Movie movie;
+
+  /// 장르·러닝타임 문구 (예: 로맨스 · 드라마 · 120분)
+  final String meta;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return SizedBox(
+      height: 534,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: ColoredBox(
+          // 이미지가 뜨기 전 보이는 배경
+          color: colors.surfaceContainerHighest,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 뒤에 포스터 — 가로형 이미지를 가운데 기준으로 잘라 채웁니다.
+              Image.asset(movie.posterAsset, fit: BoxFit.cover),
+              const ColoredBox(color: AppColors.imageOverlay),
+              // 배너 하단 — 356 x 218, padding 24
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 칩 마진 — padding-bottom 8
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: _BannerChip(label: '추천 신작'),
+                        ),
+                      ),
+                      // 제목 — padding-bottom 4, Manrope 500 / 28 / 36, #FFFFFF
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          movie.title,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontSize: 28,
+                            height: 36 / 28,
+                            color: AppColors.onImage,
+                            shadows: _textShadows,
+                          ),
+                        ),
+                      ),
+                      // 하단 설명 — padding-bottom 16, opacity 0.9
+                      // Manrope 400 / 16 / 24, #F8F2FA
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Opacity(
+                          opacity: 0.9,
+                          child: Text(
+                            meta,
+                            style: textTheme.bodyLarge?.copyWith(
+                              color: AppColors.onImageVariant,
+                              shadows: _textShadows,
+                            ),
+                          ),
+                        ),
+                      ),
+                      _DetailButton(onPressed: () {}), // 상세 화면은 아직 연결하지 않습니다.
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 추천 신작 칩 — 75 x 34, radius 9999, padding 9.5 / 12 / 6.5 / 12
+/// 배경 #4F378AE5, border 1px #FFFFFF33, box-shadow 0 1 2 #0000000D, backdrop blur 12
+class _BannerChip extends StatelessWidget {
+  const _BannerChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return DecoratedBox(
+      decoration: const ShapeDecoration(
+        shape: StadiumBorder(),
+        shadows: [
+          BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x0D000000)),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(9999),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(12, 9.5, 12, 6.5),
+            decoration: ShapeDecoration(
+              // #4F378A + 투명도 E5(229/255)
+              color: colors.onPrimaryContainer.withValues(alpha: 0xE5 / 0xFF),
+              shape: const StadiumBorder(
+                side: BorderSide(color: AppColors.onImageOutline),
+              ),
+            ),
+            // 글자 스펙이 없어 칩 크기(높이 34 = 9.5 + 16 + 6.5 + 테두리 2)에서 역산: 12 / 16
+            child: Text(
+              label,
+              style: textTheme.titleMedium?.copyWith(
+                fontSize: 12,
+                height: 16 / 12,
+                color: AppColors.onImage,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 상세보기 버튼 — 308 x 48, radius 9999, padding 12 / 0, gap 8, 배경 #4F378A
+/// box-shadow 0 2 4 -2 #0000001A, 0 4 6 -1 #0000001A
+class _DetailButton extends StatelessWidget {
+  const _DetailButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return DecoratedBox(
+      decoration: const ShapeDecoration(
+        shape: StadiumBorder(),
+        shadows: [
+          BoxShadow(
+            offset: Offset(0, 2),
+            blurRadius: 4,
+            spreadRadius: -2,
+            color: Color(0x1A000000),
+          ),
+          BoxShadow(
+            offset: Offset(0, 4),
+            blurRadius: 6,
+            spreadRadius: -1,
+            color: Color(0x1A000000),
+          ),
+        ],
+      ),
+      child: Material(
+        color: colors.onPrimaryContainer,
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: SizedBox(
+            height: 48,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 아이콘 16.67 x 16.67, #FFFFFF
+                SvgPicture.asset(
+                  'assets/icons/banner_info_filled.svg',
+                  width: 50 / 3,
+                  height: 50 / 3,
+                  colorFilter: const ColorFilter.mode(
+                    AppColors.onImage,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Manrope 500 / 16 / 24, #FFFFFF
+                Text(
+                  '상세보기',
+                  style: textTheme.titleMedium?.copyWith(color: AppColors.onImage),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

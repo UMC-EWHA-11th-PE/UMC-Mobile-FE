@@ -38,11 +38,11 @@ class AppTheme {
     outlineVariant: AppColors.outlineVariant,
     error: AppColors.error,
     errorContainer: AppColors.errorContainer,
-    // 홈 헤더
-    onPrimaryContainer: AppColors.headerAccent,
+    // 강조색 (헤더, 배너 칩·버튼)
+    onPrimaryContainer: AppColors.accent,
     // 하단 네비게이션
     surfaceContainerLowest: AppColors.navBackground,
-    surfaceContainerHighest: AppColors.navBorder,
+    surfaceContainerHighest: AppColors.containerHighest,
     secondaryContainer: AppColors.navIndicator,
     onSecondaryContainer: AppColors.navSelected,
   );

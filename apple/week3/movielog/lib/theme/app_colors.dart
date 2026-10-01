@@ -41,18 +41,34 @@ class AppColors {
   /// 오류 상태 입력창 배경
   static const Color errorContainer = Color(0xFFFFDAD6);
 
-  /// 홈 헤더 로고(MovieLog)·검색 아이콘
-  static const Color headerAccent = Color(0xFF4F378A);
+  /// 강조색 — 홈 헤더 로고·검색 아이콘, 배너 칩·상세보기 버튼
+  static const Color accent = Color(0xFF4F378A);
 
   /// 하단 네비게이션 배경
   static const Color navBackground = Color(0xFFFFFFFF);
 
-  /// 하단 네비게이션 테두리
-  static const Color navBorder = Color(0xFFE6E0E9);
+  /// 하단 네비게이션 테두리, 배너 이미지 로딩 전 배경
+  static const Color containerHighest = Color(0xFFE6E0E9);
 
   /// 하단 네비게이션 선택 탭 배경 (pill)
   static const Color navIndicator = Color(0xFFE8DEF9);
 
   /// 하단 네비게이션 선택 탭 아이콘·글자
   static const Color navSelected = Color(0xFF686177);
+
+  // ---------------------------------------------------------------------------
+  // 이미지 위에 올라가는 색 — 배경이 항상 어두운 포스터라 테마와 관계없이 고정입니다.
+  // ---------------------------------------------------------------------------
+
+  /// 포스터 위 어둡게 덮는 오버레이 (#000000B2)
+  static const Color imageOverlay = Color(0xB2000000);
+
+  /// 포스터 위 제목, 칩·버튼 글자
+  static const Color onImage = Color(0xFFFFFFFF);
+
+  /// 포스터 위 보조 텍스트 (장르·러닝타임)
+  static const Color onImageVariant = Color(0xFFF8F2FA);
+
+  /// 포스터 위 칩 테두리 (#FFFFFF33)
+  static const Color onImageOutline = Color(0x33FFFFFF);
 }
