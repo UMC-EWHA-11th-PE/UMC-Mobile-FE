@@ -40,4 +40,16 @@ class AppColors {
 
   /// 오류 상태 입력창 배경
   static const Color errorContainer = Color(0xFFFFDAD6);
+
+  /// 하단 네비게이션 배경
+  static const Color navBackground = Color(0xFFFFFFFF);
+
+  /// 하단 네비게이션 테두리
+  static const Color navBorder = Color(0xFFE6E0E9);
+
+  /// 하단 네비게이션 선택 탭 배경 (pill)
+  static const Color navIndicator = Color(0xFFE8DEF9);
+
+  /// 하단 네비게이션 선택 탭 아이콘·글자
+  static const Color navSelected = Color(0xFF686177);
 }

@@ -38,6 +38,11 @@ class AppTheme {
     outlineVariant: AppColors.outlineVariant,
     error: AppColors.error,
     errorContainer: AppColors.errorContainer,
+    // 하단 네비게이션
+    surfaceContainerLowest: AppColors.navBackground,
+    surfaceContainerHighest: AppColors.navBorder,
+    secondaryContainer: AppColors.navIndicator,
+    onSecondaryContainer: AppColors.navSelected,
   );
 
   /// Figma Typography를 그대로 옮긴 TextTheme입니다.

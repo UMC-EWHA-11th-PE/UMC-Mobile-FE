@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 class MainScreen extends StatelessWidget {
@@ -15,9 +16,9 @@ class MainScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: currentIndex,
-        onDestinationSelected: (index) {
+      bottomNavigationBar: _BottomNavBar(
+        currentIndex: currentIndex,
+        onSelected: (index) {
           switch (index) {
             case 0:
               context.go('/home');
@@ -30,23 +31,156 @@ class MainScreen extends StatelessWidget {
               break;
           }
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: '홈',
+      ),
+    );
+  }
+}
+
+/// 탭 하나에 필요한 아이콘·라벨 정보
+class _NavDestination {
+  const _NavDestination({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+    required this.iconSize,
+  });
+
+  final String label;
+  final String icon;
+  final String selectedIcon;
+
+  /// Figma 아이콘 크기 (홈 16x18, 영화 20x16, 마이 16x16)
+  final Size iconSize;
+}
+
+const _destinations = [
+  _NavDestination(
+    label: '홈',
+    icon: 'assets/icons/nav_home.svg',
+    selectedIcon: 'assets/icons/nav_home_filled.svg',
+    iconSize: Size(16, 18),
+  ),
+  _NavDestination(
+    label: '영화',
+    icon: 'assets/icons/nav_movie.svg',
+    selectedIcon: 'assets/icons/nav_movie_filled.svg',
+    iconSize: Size(20, 16),
+  ),
+  _NavDestination(
+    label: '마이',
+    icon: 'assets/icons/nav_person.svg',
+    selectedIcon: 'assets/icons/nav_person_filled.svg',
+    iconSize: Size(16, 16),
+  ),
+];
+
+/// 하단 네비게이션 — 390 x 80, 배경 #FFFFFF, border 1px #E6E0E9
+class _BottomNavBar extends StatelessWidget {
+  const _BottomNavBar({required this.currentIndex, required this.onSelected});
+
+  final int currentIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        border: Border.all(color: colors.surfaceContainerHighest),
+      ),
+      // 홈 인디케이터 등 하단 시스템 영역만큼 아래로 띄움
+      child: SafeArea(
+        top: false,
+        // 내부 컨테이너 — 388 x 80, box-shadow 0 -4 20 -10 #0000001A
+        child: Container(
+          height: 80,
+          decoration: const BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x1A000000),
+                offset: Offset(0, -4),
+                blurRadius: 20,
+                spreadRadius: -10,
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.movie_outlined),
-            selectedIcon: Icon(Icons.movie),
-            label: '영화',
+          child: Row(
+            children: [
+              for (var i = 0; i < _destinations.length; i++)
+                Expanded(
+                  child: Center(
+                    child: _NavItem(
+                      destination: _destinations[i],
+                      selected: i == currentIndex,
+                      onTap: () => onSelected(i),
+                    ),
+                  ),
+                ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: '마이',
+        ),
+      ),
+    );
+  }
+}
+
+/// 탭 하나 — radius 9999, padding 4 / 20 / 4 / 20
+/// 선택: 배경 #E8DEF9, 아이콘·글자 #686177 / 미선택: 배경 없음, #494551
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.destination,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _NavDestination destination;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final color = selected ? colors.onSecondaryContainer : colors.onSurfaceVariant;
+
+    // Figma 라벨 높이: 선택 10.8 (홈 탭), 미선택 16 (마이 탭)
+    final labelStyle = selected
+        ? textTheme.titleMedium?.copyWith(fontSize: 11, height: 10.8 / 11, color: color)
+        : textTheme.titleMedium?.copyWith(fontSize: 12, height: 16 / 12, color: color);
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: destination.label,
+      excludeSemantics: true,
+      child: Material(
+        color: selected ? colors.secondaryContainer : Colors.transparent,
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 아이콘 마진 — padding-bottom 4
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: SvgPicture.asset(
+                    selected ? destination.selectedIcon : destination.icon,
+                    width: destination.iconSize.width,
+                    height: destination.iconSize.height,
+                    colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+                  ),
+                ),
+                Text(destination.label, style: labelStyle),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }

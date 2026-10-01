@@ -29,13 +29,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('홈 화면'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.movie_outlined));
+    await tester.tap(find.text('영화'));
     await tester.pumpAndSettle();
     expect(find.text('별빛 아래 우리'), findsOneWidget);
     expect(find.text('우주의 끝에서'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.person_outline));
+    await tester.tap(find.text('마이'));
     await tester.pumpAndSettle();
     expect(find.text('마이 화면'), findsOneWidget);
+  });
+
+  testWidgets('하단 네비게이션이 Figma 크기를 따른다', (WidgetTester tester) async {
+    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('시작하기'));
+    await tester.pumpAndSettle();
+
+    // 라벨을 감싸는 pill(StadiumBorder Material)의 크기
+    Size pillSize(String label) => tester.getSize(
+      find.ancestor(
+        of: find.text(label),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is Material && widget.shape is StadiumBorder,
+        ),
+      ),
+    );
+
+    // 선택된 홈: 56 x 40.8
+    expect(pillSize('홈'), const Size(56, 40.8));
+    // 미선택 마이: 높이 44 (너비는 글꼴에 따라 달라짐)
+    expect(pillSize('마이').height, 44);
   });
 }
