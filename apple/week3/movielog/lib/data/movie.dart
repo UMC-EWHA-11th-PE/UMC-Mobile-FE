@@ -19,15 +19,15 @@ class Movie {
 }
 
 /// W3-02 영화 목록 Figma 기준 Mock 데이터입니다.
+/// posterAsset은 목록 카드(2:3)용 세로 포스터입니다.
 const movies = [
-  // TODO: 목록용 세로 포스터 필요 — 지금은 홈 배너용 가로 이미지를 함께 사용합니다.
   Movie(
     id: 1,
     title: '별빛 아래 우리',
     genre: '드라마',
     year: 2023,
     rating: 4.8,
-    posterAsset: 'assets/images/posters/hero_under_the_starlight.jpg',
+    posterAsset: 'assets/images/posters/card_us_under_the_starlight.png',
   ),
   Movie(
     id: 2,
@@ -35,7 +35,7 @@ const movies = [
     genre: 'SF',
     year: 2024,
     rating: 4.2,
-    posterAsset: 'assets/images/posters/poster_echoes_of_the_void.jpg',
+    posterAsset: 'assets/images/posters/card_echoes_of_the_void.png',
   ),
   Movie(
     id: 3,
@@ -43,7 +43,7 @@ const movies = [
     genre: '애니메이션',
     year: 2022,
     rating: 4.9,
-    posterAsset: 'assets/images/posters/poster_whispering_woods.jpg',
+    posterAsset: 'assets/images/posters/card_whispering_woods.png',
   ),
   Movie(
     id: 4,
@@ -51,7 +51,7 @@ const movies = [
     genre: '스릴러',
     year: 2024,
     rating: 3.8,
-    posterAsset: 'assets/images/posters/poster_night_shadows.jpg',
+    posterAsset: 'assets/images/posters/card_night_shadows.png',
   ),
   Movie(
     id: 5,
@@ -59,16 +59,15 @@ const movies = [
     genre: '로맨스',
     year: 2021,
     rating: 4.5,
-    posterAsset: 'assets/images/posters/poster_fourth_afternoon.jpg',
+    posterAsset: 'assets/images/posters/card_fourth_afternoon.png',
   ),
-  // TODO: 포스터 이미지 추가 필요 (Figma: 도시의 리듬 건물 포스터)
   Movie(
     id: 6,
     title: '도시의 선',
     genre: '다큐멘터리',
     year: 2023,
     rating: 4.1,
-    posterAsset: 'assets/images/posters/poster_city_lines.png',
+    posterAsset: 'assets/images/posters/card_city_rhythm.png',
   ),
 ];
 

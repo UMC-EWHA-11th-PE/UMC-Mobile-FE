@@ -23,6 +23,9 @@ class HomeScreen extends StatelessWidget {
   /// 배너 보조 문구 — Mock 데이터에 러닝타임·복수 장르가 없어 Figma 문구를 그대로 사용합니다.
   static const _featuredMeta = '로맨스 · 드라마 · 120분';
 
+  /// 배너 배경 — 목록용 세로 포스터와 달리 가로형 이미지를 사용합니다.
+  static const _featuredBackdrop = 'assets/images/posters/hero_under_the_starlight.jpg';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,7 +39,11 @@ class HomeScreen extends StatelessWidget {
           // 중간 섹션 — padding 0 / 16 / 24 / 16
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            child: _FeaturedBanner(movie: movies.first, meta: _featuredMeta),
+            child: _FeaturedBanner(
+              movie: movies.first,
+              backdropAsset: _featuredBackdrop,
+              meta: _featuredMeta,
+            ),
           ),
           const _PopularSection(movies: popularMovies),
         ],
@@ -79,9 +86,16 @@ class _GreetingSection extends StatelessWidget {
 /// 중간 배너 — 356 x 534, radius 24, 배경 #E6E0E9
 /// 포스터 → 오버레이(#000000B2) → 하단 정보(칩, 제목, 설명, 버튼) 순으로 쌓습니다.
 class _FeaturedBanner extends StatelessWidget {
-  const _FeaturedBanner({required this.movie, required this.meta});
+  const _FeaturedBanner({
+    required this.movie,
+    required this.backdropAsset,
+    required this.meta,
+  });
 
   final Movie movie;
+
+  /// 배너 배경 이미지 (가로형)
+  final String backdropAsset;
 
   /// 장르·러닝타임 문구 (예: 로맨스 · 드라마 · 120분)
   final String meta;
@@ -102,7 +116,7 @@ class _FeaturedBanner extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               // 뒤에 포스터 — 가로형 이미지를 가운데 기준으로 잘라 채웁니다.
-              Image.asset(movie.posterAsset, fit: BoxFit.cover),
+              Image.asset(backdropAsset, fit: BoxFit.cover),
               const ColoredBox(color: AppColors.imageOverlay),
               // 배너 하단 — 356 x 218, padding 24
               Align(
