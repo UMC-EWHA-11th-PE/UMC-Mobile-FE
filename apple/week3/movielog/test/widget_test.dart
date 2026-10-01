@@ -110,10 +110,11 @@ void main() {
     await tester.pumpWidget(const MovieLogApp());
     await tester.pumpAndSettle();
 
-    // 홈 배너 → 상세
+    // 홈 배너 → 상세 (장르·러닝타임도 상세와 같은 Mock)
     AppRouter.router.go('/home');
     await tester.pumpAndSettle();
     expect(find.text('별빛 아래 우리'), findsOneWidget);
+    expect(find.text('로맨스 · 드라마 · 124분'), findsOneWidget);
     await tester.tap(find.text('상세보기'));
     await tester.pumpAndSettle();
     expect(currentPath(), '/movies/1');
@@ -134,6 +135,8 @@ void main() {
 
     AppRouter.router.go('/home');
     await tester.pumpAndSettle();
+    // Material 3 NavigationBar로 탭을 전환
+    expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('오늘은 어떤\n영화를 볼까요?'), findsOneWidget);
 
     await tester.tap(find.text('영화'));

@@ -77,7 +77,7 @@ const _destinations = [
   ),
 ];
 
-/// 하단 네비게이션 — 390 x 80, 배경 #FFFFFF, border 1px #E6E0E9
+/// 하단 네비게이션 — Material 3 NavigationBar, 390 x 80, 배경 #FFFFFF, border 1px #E6E0E9
 class _BottomNavBar extends StatelessWidget {
   const _BottomNavBar({required this.currentIndex, required this.onSelected});
 
@@ -93,32 +93,30 @@ class _BottomNavBar extends StatelessWidget {
         color: colors.surfaceContainerLowest,
         border: Border.all(color: colors.surfaceContainerHighest),
       ),
-      // 홈 인디케이터 등 하단 시스템 영역만큼 아래로 띄움
-      child: SafeArea(
-        top: false,
-        // 내부 컨테이너 — 388 x 80, box-shadow 0 -4 20 -10 #0000001A
-        child: Container(
+      // 내부 컨테이너 — box-shadow 0 -4 20 -10 #0000001A
+      // Flutter는 CSS와 달리 그림자를 박스 안쪽에도 그리지만, 위에 그려지는 NavigationBar 배경(흰색)이
+      // 안쪽을 덮어서 바깥 그림자만 보입니다.
+      child: DecoratedBox(
+        decoration: const BoxDecoration(boxShadow: AppShadows.navigationBar),
+        // Material 3 NavigationBar — 높이 80, 하단 시스템 영역(SafeArea)은 NavigationBar가 처리
+        // 탭 모양은 Figma pill(아이콘 + 라벨을 함께 감쌈)이라 destinations에 직접 만든 _NavItem을 넣습니다.
+        child: NavigationBar(
+          selectedIndex: currentIndex,
+          onDestinationSelected: onSelected,
           height: 80,
-          decoration: BoxDecoration(
-            // Figma 배경은 #FFFFFF01(거의 투명)이지만, Flutter는 CSS와 달리 그림자를
-            // 박스 안쪽에도 그려서 회색 띠가 비칩니다. 네비 배경색으로 덮어 바깥 그림자만 남깁니다.
-            color: colors.surfaceContainerLowest,
-            boxShadow: AppShadows.navigationBar,
-          ),
-          child: Row(
-            children: [
-              for (var i = 0; i < _destinations.length; i++)
-                Expanded(
-                  child: Center(
-                    child: _NavItem(
-                      destination: _destinations[i],
-                      selected: i == currentIndex,
-                      onTap: () => onSelected(i),
-                    ),
-                  ),
+          backgroundColor: colors.surfaceContainerLowest,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          destinations: [
+            for (var i = 0; i < _destinations.length; i++)
+              Center(
+                child: _NavItem(
+                  destination: _destinations[i],
+                  selected: i == currentIndex,
+                  onTap: () => onSelected(i),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -152,10 +150,10 @@ class _NavItem extends StatelessWidget {
         ? AppTheme.navLabelSelected.copyWith(color: color)
         : textTheme.bodySmall?.copyWith(color: color);
 
+    // 탭 역할·선택 상태는 NavigationBar가 붙여 주고, 여기서는 이름과 탭 동작만 전달합니다.
     return Semantics(
-      button: true,
-      selected: selected,
       label: destination.label,
+      onTap: onTap,
       excludeSemantics: true,
       child: Material(
         color: selected ? colors.secondaryContainer : Colors.transparent,

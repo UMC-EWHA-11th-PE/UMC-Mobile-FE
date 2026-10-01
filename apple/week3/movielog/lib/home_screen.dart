@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import 'data/movie.dart';
+import 'data/movie_detail.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_shadows.dart';
 import 'widgets/app_header.dart';
@@ -24,15 +25,12 @@ import 'widgets/poster_image.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  /// 배너 보조 문구 — Mock 데이터에 러닝타임·복수 장르가 없어 Figma 문구를 그대로 사용합니다.
-  static const _featuredMeta = '로맨스 · 드라마 · 120분';
-
-  /// 배너 배경 — 목록용 세로 포스터와 달리 가로형 이미지를 사용합니다.
-  static const _featuredBackdrop =
-      'assets/images/posters/hero_under_the_starlight.jpg';
-
   @override
   Widget build(BuildContext context) {
+    // 추천 신작 — 목록·상세와 같은 Mock(id 1, 별빛 아래 우리)을 사용합니다.
+    final featured = movies.first;
+    final featuredDetail = findMovieDetailById(featured.id)!;
+
     // 홈에서는 시스템 뒤로가기(Android 뒤로 버튼 등)로 회원가입·시작 화면에 돌아가지 않습니다.
     return PopScope(
       canPop: false,
@@ -48,9 +46,15 @@ class HomeScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               child: _FeaturedBanner(
-                movie: movies.first,
-                backdropAsset: _featuredBackdrop,
-                meta: _featuredMeta,
+                movie: featured,
+                // 배너 배경 — 상세 히어로와 같은 가로형 이미지
+                backdropAsset: featuredDetail.heroAsset,
+                // 로맨스 · 드라마 · 124분
+                meta: [
+                  ...featuredDetail.genres,
+                  if (featuredDetail.runtimeMinutes != null)
+                    '${featuredDetail.runtimeMinutes}분',
+                ].join(' · '),
               ),
             ),
             const _PopularSection(movies: popularMovies),
@@ -98,7 +102,7 @@ class _FeaturedBanner extends StatelessWidget {
   /// 배너 배경 이미지 (가로형)
   final String backdropAsset;
 
-  /// 장르·러닝타임 문구 (예: 로맨스 · 드라마 · 120분)
+  /// 장르·러닝타임 문구 (예: 로맨스 · 드라마 · 124분)
   final String meta;
 
   @override
