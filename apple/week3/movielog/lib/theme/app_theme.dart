@@ -38,6 +38,8 @@ class AppTheme {
     outlineVariant: AppColors.outlineVariant,
     error: AppColors.error,
     errorContainer: AppColors.errorContainer,
+    // 홈 헤더
+    onPrimaryContainer: AppColors.headerAccent,
     // 하단 네비게이션
     surfaceContainerLowest: AppColors.navBackground,
     surfaceContainerHighest: AppColors.navBorder,

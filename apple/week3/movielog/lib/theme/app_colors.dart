@@ -41,6 +41,9 @@ class AppColors {
   /// 오류 상태 입력창 배경
   static const Color errorContainer = Color(0xFFFFDAD6);
 
+  /// 홈 헤더 로고(MovieLog)·검색 아이콘
+  static const Color headerAccent = Color(0xFF4F378A);
+
   /// 하단 네비게이션 배경
   static const Color navBackground = Color(0xFFFFFFFF);
 

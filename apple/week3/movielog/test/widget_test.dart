@@ -60,4 +60,19 @@ void main() {
     // 미선택 마이: 높이 44 (너비는 글꼴에 따라 달라짐)
     expect(pillSize('마이').height, 44);
   });
+
+  testWidgets('홈 헤더가 Figma 크기를 따른다', (WidgetTester tester) async {
+    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('시작하기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('MovieLog'), findsOneWidget);
+    // 로고 높이 28 (line-height)
+    expect(tester.getSize(find.text('MovieLog')).height, 28);
+    // 검색 버튼 34 x 34, 오른쪽 여백 16
+    final search = find.byTooltip('검색');
+    expect(tester.getSize(search), const Size(34, 34));
+    expect(tester.getTopRight(search).dx, 800 - 16);
+  });
 }

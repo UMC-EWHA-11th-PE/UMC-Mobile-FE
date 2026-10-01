@@ -146,6 +146,7 @@ class _NavItem extends StatelessWidget {
     final color = selected ? colors.onSecondaryContainer : colors.onSurfaceVariant;
 
     // Figma 라벨 높이: 선택 10.8 (홈 탭), 미선택 16 (마이 탭)
+    final labelHeight = selected ? 10.8 : 16.0;
     final labelStyle = selected
         ? textTheme.titleMedium?.copyWith(fontSize: 11, height: 10.8 / 11, color: color)
         : textTheme.titleMedium?.copyWith(fontSize: 12, height: 16 / 12, color: color);
@@ -176,7 +177,15 @@ class _NavItem extends StatelessWidget {
                     colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
                   ),
                 ),
-                Text(destination.label, style: labelStyle),
+                // Flutter는 글자 높이를 정수로 올림하므로 Figma 높이로 고정
+                SizedBox(
+                  height: labelHeight,
+                  child: Text(
+                    destination.label,
+                    style: labelStyle,
+                    overflow: TextOverflow.visible,
+                  ),
+                ),
               ],
             ),
           ),
