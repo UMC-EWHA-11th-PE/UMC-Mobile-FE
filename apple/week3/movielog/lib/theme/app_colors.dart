@@ -65,6 +65,12 @@ class AppColors {
   /// 영화 목록 포스터 위 별점 칩 글자
   static const Color onInverseSurface = Color(0xFFF5EFF7);
 
+  /// 평점 Dialog 제목 (#25232A)
+  static const Color dialogTitle = Color(0xFF25232A);
+
+  /// 평점 Dialog 선택되지 않은 별
+  static const Color ratingUnrated = Color(0xFFD9D3DF);
+
   /// 마이페이지 장르 칩 배경, 통계 카드 테두리 (1주차)
   static const Color primaryContainer = Color(0xFFE9DDFF);
 

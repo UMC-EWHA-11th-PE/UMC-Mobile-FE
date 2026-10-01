@@ -40,6 +40,31 @@ class AppTheme {
     color: AppColors.accent,
   );
 
+  /// 평점 Dialog 제목 — Manrope 700 / 20 / 100%, #25232A
+  static const TextStyle dialogTitle = TextStyle(
+    fontSize: 20,
+    height: 1,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+    color: AppColors.dialogTitle,
+  );
+
+  /// 평점 Dialog 확인 버튼 — Manrope 700 / 16 / 100%
+  static const TextStyle dialogAction = TextStyle(
+    fontSize: 16,
+    height: 1,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+  );
+
+  /// 평점 Dialog 다시 선택하기 — Manrope 700 / 14 / 100%
+  static const TextStyle dialogTextAction = TextStyle(
+    fontSize: 14,
+    height: 1,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+  );
+
   /// 영화 상세 시놉시스 본문 — Manrope 500 / 16 / 26 / 0.5, #494551
   static const TextStyle synopsisBody = TextStyle(
     fontSize: 16,

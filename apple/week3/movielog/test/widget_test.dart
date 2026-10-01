@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:movielog/main.dart';
@@ -402,7 +403,7 @@ void main() {
       final dialogStar = find
           .descendant(
             of: find.byType(Dialog),
-            matching: find.byIcon(Icons.star),
+            matching: find.byType(SvgPicture),
           )
           .last;
       final rect = tester.getRect(dialogStar);
