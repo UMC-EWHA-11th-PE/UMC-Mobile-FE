@@ -40,6 +40,8 @@ class AppTheme {
     errorContainer: AppColors.errorContainer,
     // 강조색 (헤더, 배너 칩·버튼)
     onPrimaryContainer: AppColors.accent,
+    // 별점 별
+    tertiary: AppColors.ratingStar,
     // 하단 네비게이션
     surfaceContainerLowest: AppColors.navBackground,
     surfaceContainerHighest: AppColors.containerHighest,

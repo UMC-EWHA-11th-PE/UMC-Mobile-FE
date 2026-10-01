@@ -3,7 +3,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import 'package:go_router/go_router.dart';
+
 import 'data/movie.dart';
+import 'data/popular_movie.dart';
 import 'theme/app_colors.dart';
 
 /// W3-01 영화 홈 화면입니다.
@@ -12,6 +15,7 @@ import 'theme/app_colors.dart';
 /// - [_HomeHeader] MovieLog 로고, 검색 버튼
 /// - [_GreetingSection] 오늘은 어떤 영화를 볼까요?
 /// - [_FeaturedBanner] 추천 신작 배너
+/// - [_PopularSection] 인기 영화 가로 목록
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -33,6 +37,7 @@ class HomeScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             child: _FeaturedBanner(movie: movies.first, meta: _featuredMeta),
           ),
+          const _PopularSection(movies: popularMovies),
         ],
       ),
     );
@@ -327,6 +332,231 @@ class _HomeHeader extends StatelessWidget implements PreferredSizeWidget {
                 tooltip: '검색',
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 인기 영화 섹션 — 388 x 324, padding-bottom 8, gap 16
+/// 제목 줄(28) + 가로 목록(272)
+class _PopularSection extends StatelessWidget {
+  const _PopularSection({required this.movies});
+
+  final List<PopularMovie> movies;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 내부 컨테이너 — 388 x 28, padding 0 / 16, space-between
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              height: 28,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Manrope 500 / 22 / 28, #1D1B20
+                  Text('인기 영화', style: textTheme.titleLarge),
+                  _SeeAllButton(onPressed: () => context.go('/movies')),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // 중앙 컨테이너 — 388 x 272, 카드 140 x 256, 간격 16
+          SizedBox(
+            height: 272,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: movies.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 16),
+              itemBuilder: (context, index) => Align(
+                alignment: Alignment.topCenter,
+                child: _PopularMovieCard(rank: index + 1, movie: movies[index]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 전체보기 텍스트 버튼 — 67.93 x 24, gap 4, #4F378A
+class _SeeAllButton extends StatelessWidget {
+  const _SeeAllButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Manrope 500 / 16 / 24
+          Text(
+            '전체보기',
+            style: textTheme.titleMedium?.copyWith(color: colors.onPrimaryContainer),
+          ),
+          const SizedBox(width: 4),
+          // 아이콘 4.93 x 8
+          SvgPicture.asset(
+            'assets/icons/chevron_right.svg',
+            width: 4.933,
+            height: 8,
+            colorFilter: ColorFilter.mode(colors.onPrimaryContainer, BlendMode.srcIn),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 영화 카드 — 140 x 256
+/// 포스터(200) + 마진 12 + 제목(24) + 별점 영역(20)
+class _PopularMovieCard extends StatelessWidget {
+  const _PopularMovieCard({required this.rank, required this.movie});
+
+  final int rank;
+  final PopularMovie movie;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return SizedBox(
+      width: 140,
+      child: Column(
+        // 목록 높이(272)를 채우지 않고 카드 높이(256)만 차지
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 마진 — padding-bottom 12
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            // 배경 그림자 — 140 x 200, radius 16, #E6E0E9, box-shadow 0 1 2 #0000000D
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(
+                    offset: Offset(0, 1),
+                    blurRadius: 2,
+                    color: Color(0x0D000000),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: SizedBox(
+                  height: 200,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        movie.posterAsset,
+                        fit: BoxFit.cover,
+                        // 포스터가 없으면 배경색(#E6E0E9)만 보여줍니다.
+                        errorBuilder: (context, error, stackTrace) =>
+                            const SizedBox.shrink(),
+                      ),
+                      Positioned(left: 8, top: 8, child: _RankChip(rank: rank)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // 제목 — 140 x 24, Manrope 500 / 16 / 24, #1D1B20
+          SizedBox(
+            height: 24,
+            child: Text(
+              movie.title,
+              style: textTheme.titleMedium,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // 별점 영역 — padding-top 4, 내부 16, gap 4
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: SizedBox(
+              height: 16,
+              child: Row(
+                children: [
+                  // 별 11.67 x 11.08, #C9A74D
+                  SvgPicture.asset(
+                    'assets/icons/rating_star_filled.svg',
+                    width: 11.667,
+                    height: 11.083,
+                    colorFilter: ColorFilter.mode(colors.tertiary, BlendMode.srcIn),
+                  ),
+                  const SizedBox(width: 4),
+                  // Manrope 400 / 12 / 16, #494551
+                  Text(
+                    movie.rating.toStringAsFixed(1),
+                    style: textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w400,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 포스터 위 순위 칩 — 24 x 26, radius 6, padding 4 / 8
+/// 배경 #00000099, border 1px #FFFFFF1A, backdrop blur 4
+class _RankChip extends StatelessWidget {
+  const _RankChip({required this.rank});
+
+  final int rank;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final radius = BorderRadius.circular(6);
+
+    return ClipRRect(
+      borderRadius: radius,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.rankChip,
+            borderRadius: radius,
+            border: Border.all(color: AppColors.rankChipOutline),
+          ),
+          // Manrope 700 / 12 / 16
+          child: Text(
+            '$rank',
+            style: textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.onImage,
+            ),
           ),
         ),
       ),

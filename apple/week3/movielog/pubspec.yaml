@@ -60,8 +60,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # 공통 에셋 팩(movielog-flutter-assets) 구조 — 라이선스는 ASSET-NOTICE.md 참고
   assets:
-    - assets/images/
+    - assets/images/profile/
+    - assets/images/posters/
+    - assets/logos/
     - assets/icons/
 
   fonts:

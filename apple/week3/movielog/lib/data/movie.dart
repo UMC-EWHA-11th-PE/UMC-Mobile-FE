@@ -20,14 +20,14 @@ const movies = [
     title: '별빛 아래 우리',
     genre: '드라마',
     year: 2024,
-    posterAsset: 'assets/images/movie_1.jpg',
+    posterAsset: 'assets/images/posters/hero_under_the_starlight.jpg',
   ),
   Movie(
     id: 2,
     title: '우주의 끝에서',
     genre: 'SF',
     year: 2024,
-    posterAsset: 'assets/images/movie_2.jpg',
+    posterAsset: 'assets/images/posters/poster_echoes_of_the_void.jpg',
   ),
 ];
 

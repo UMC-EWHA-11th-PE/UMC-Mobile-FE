@@ -56,6 +56,9 @@ class AppColors {
   /// 하단 네비게이션 선택 탭 아이콘·글자
   static const Color navSelected = Color(0xFF686177);
 
+  /// 별점 별 아이콘
+  static const Color ratingStar = Color(0xFFC9A74D);
+
   // ---------------------------------------------------------------------------
   // 이미지 위에 올라가는 색 — 배경이 항상 어두운 포스터라 테마와 관계없이 고정입니다.
   // ---------------------------------------------------------------------------
@@ -71,4 +74,10 @@ class AppColors {
 
   /// 포스터 위 칩 테두리 (#FFFFFF33)
   static const Color onImageOutline = Color(0x33FFFFFF);
+
+  /// 포스터 위 순위 칩 배경 (#00000099)
+  static const Color rankChip = Color(0x99000000);
+
+  /// 포스터 위 순위 칩 테두리 (#FFFFFF1A)
+  static const Color rankChipOutline = Color(0x1AFFFFFF);
 }
