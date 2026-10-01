@@ -96,8 +96,11 @@ class _BottomNavBar extends StatelessWidget {
         // 내부 컨테이너 — 388 x 80, box-shadow 0 -4 20 -10 #0000001A
         child: Container(
           height: 80,
-          decoration: const BoxDecoration(
-            boxShadow: [
+          decoration: BoxDecoration(
+            // Figma 배경은 #FFFFFF01(거의 투명)이지만, Flutter는 CSS와 달리 그림자를
+            // 박스 안쪽에도 그려서 회색 띠가 비칩니다. 네비 배경색으로 덮어 바깥 그림자만 남깁니다.
+            color: colors.surfaceContainerLowest,
+            boxShadow: const [
               BoxShadow(
                 color: Color(0x1A000000),
                 offset: Offset(0, -4),
