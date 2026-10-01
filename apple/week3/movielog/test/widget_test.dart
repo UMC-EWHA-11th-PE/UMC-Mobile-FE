@@ -175,4 +175,75 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('우주의 끝에서'), findsOneWidget);
   });
+
+  group('영화 목록', () {
+    Future<void> openMovieList(WidgetTester tester) async {
+      // W3-02 Figma 프레임 너비 390 (콘텐츠 358 = 390 - 16 x 2)
+      tester.view.physicalSize = const Size(390, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(const MovieLogApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('시작하기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('영화'));
+      await tester.pumpAndSettle();
+    }
+
+    Finder itemOf(String title) => find.ancestor(
+      of: find.text(title),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Column && widget.children.length == 3,
+      ),
+    );
+
+    testWidgets('Figma 크기를 따른다', (WidgetTester tester) async {
+      await openMovieList(tester);
+
+      // 헤더 제목
+      expect(find.text('영화'), findsNWidgets(2)); // 헤더 + 하단 네비
+
+      // 필터 칩 높이 32, 헤더 아래 8
+      final allChip = find.ancestor(of: find.text('전체'), matching: find.byType(Material)).first;
+      expect(tester.getSize(allChip).height, 32);
+      expect(tester.getTopLeft(allChip), const Offset(16, 64 + 8));
+
+      // 영화 아이템 171 x 316.5, 포스터 171 x 256.5
+      final first = itemOf('별빛 아래 우리');
+      final second = itemOf('우주의 끝에서');
+      final third = itemOf('기억의 숲');
+      expect(tester.getSize(first), const Size(171, 316.5));
+      final poster = find.ancestor(of: find.text('★ 4.8'), matching: find.byType(AspectRatio));
+      expect(tester.getSize(poster), const Size(171, 256.5));
+
+      // 필터 칩 영역(40) 아래 16에서 그리드 시작
+      expect(tester.getTopLeft(first).dy, 64 + 8 + 40 + 16);
+
+      // column-gap 16, row-gap 24
+      expect(tester.getTopLeft(second).dx - tester.getTopRight(first).dx, 16);
+      expect(tester.getTopLeft(third).dy - tester.getBottomLeft(first).dy, 24);
+
+      // 별점 칩: 포스터 오른쪽 위에서 8, 높이 24
+      final ratingChip = find.ancestor(of: find.text('★ 4.8'), matching: find.byType(BackdropFilter));
+      expect(tester.getTopRight(ratingChip) - tester.getTopRight(poster), const Offset(-8, 8));
+      expect(tester.getSize(ratingChip).height, 24);
+
+      // 소제목
+      expect(find.text('2023 · 드라마'), findsOneWidget);
+    });
+
+    testWidgets('장르 칩을 누르면 해당 장르만 보인다', (WidgetTester tester) async {
+      await openMovieList(tester);
+
+      await tester.tap(find.text('SF'));
+      await tester.pumpAndSettle();
+      expect(find.text('우주의 끝에서'), findsOneWidget);
+      expect(find.text('별빛 아래 우리'), findsNothing);
+
+      await tester.tap(find.text('전체'));
+      await tester.pumpAndSettle();
+      expect(find.text('별빛 아래 우리'), findsOneWidget);
+    });
+  });
 }

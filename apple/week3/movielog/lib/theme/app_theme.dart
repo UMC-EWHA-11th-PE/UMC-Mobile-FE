@@ -42,6 +42,9 @@ class AppTheme {
     onPrimaryContainer: AppColors.accent,
     // 별점 별
     tertiary: AppColors.ratingStar,
+    // 영화 목록 별점 칩
+    inverseSurface: AppColors.inverseSurface,
+    onInverseSurface: AppColors.onInverseSurface,
     // 하단 네비게이션
     surfaceContainerLowest: AppColors.navBackground,
     surfaceContainerHighest: AppColors.containerHighest,

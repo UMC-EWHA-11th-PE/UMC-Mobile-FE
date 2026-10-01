@@ -29,6 +29,6 @@ const popularMovies = [
   PopularMovie(
     title: '비오는 날의 기억',
     rating: 8.9,
-    posterAsset: 'assets/images/posters/poster_rainy_day.png',
+    posterAsset: 'assets/images/posters/poster_rainy_day.jpg',
   ),
 ];

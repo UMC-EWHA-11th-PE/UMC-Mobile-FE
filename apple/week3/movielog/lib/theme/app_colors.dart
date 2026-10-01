@@ -59,6 +59,12 @@ class AppColors {
   /// 별점 별 아이콘
   static const Color ratingStar = Color(0xFFC9A74D);
 
+  /// 영화 목록 포스터 위 별점 칩 배경 (투명도 CC는 위젯에서 적용)
+  static const Color inverseSurface = Color(0xFF322F35);
+
+  /// 영화 목록 포스터 위 별점 칩 글자
+  static const Color onInverseSurface = Color(0xFFF5EFF7);
+
   // ---------------------------------------------------------------------------
   // 이미지 위에 올라가는 색 — 배경이 항상 어두운 포스터라 테마와 관계없이 고정입니다.
   // ---------------------------------------------------------------------------
