@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import 'theme/app_shadows.dart';
+
 class MainScreen extends StatelessWidget {
   const MainScreen({
     super.key,
@@ -100,14 +102,7 @@ class _BottomNavBar extends StatelessWidget {
             // Figma 배경은 #FFFFFF01(거의 투명)이지만, Flutter는 CSS와 달리 그림자를
             // 박스 안쪽에도 그려서 회색 띠가 비칩니다. 네비 배경색으로 덮어 바깥 그림자만 남깁니다.
             color: colors.surfaceContainerLowest,
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x1A000000),
-                offset: Offset(0, -4),
-                blurRadius: 20,
-                spreadRadius: -10,
-              ),
-            ],
+            boxShadow: AppShadows.navigationBar,
           ),
           child: Row(
             children: [
@@ -146,13 +141,15 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final color = selected ? colors.onSecondaryContainer : colors.onSurfaceVariant;
+    final color = selected
+        ? colors.onSecondaryContainer
+        : colors.onSurfaceVariant;
 
     // Figma 라벨 높이: 선택 10.8 (홈 탭), 미선택 16 (마이 탭)
     final labelHeight = selected ? 10.8 : 16.0;
     final labelStyle = selected
-        ? textTheme.titleMedium?.copyWith(fontSize: 11, height: 10.8 / 11, color: color)
-        : textTheme.titleMedium?.copyWith(fontSize: 12, height: 16 / 12, color: color);
+        ? textTheme.labelSmall?.copyWith(color: color)
+        : textTheme.bodySmall?.copyWith(color: color);
 
     return Semantics(
       button: true,

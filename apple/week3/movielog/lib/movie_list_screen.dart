@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'data/movie.dart';
+import 'theme/app_shadows.dart';
 import 'widgets/app_header.dart';
 import 'widgets/poster_badge.dart';
 import 'widgets/poster_image.dart';
@@ -132,13 +133,7 @@ class _GenreChip extends StatelessWidget {
       child: DecoratedBox(
         decoration: const ShapeDecoration(
           shape: StadiumBorder(),
-          shadows: [
-            BoxShadow(
-              offset: Offset(0, 1),
-              blurRadius: 2,
-              color: Color(0x0D000000),
-            ),
-          ],
+          shadows: AppShadows.card,
         ),
         child: Material(
           color: selected ? colors.primary : colors.surfaceContainerHighest,

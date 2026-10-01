@@ -367,6 +367,15 @@ void main() {
       await tester.tap(find.text('즐겨찾기'));
       await tester.pump();
       expect(find.text('즐겨찾기에 추가했습니다.'), findsOneWidget);
+      // 즐겨찾기 상태에서는 제공된 북마크 아이콘(PNG)을 사용
+      Finder bookmarkPng() => find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName ==
+                'assets/icons/bookmark_filled.png',
+      );
+      expect(bookmarkPng(), findsOneWidget);
       final toggle = tester.getSemantics(
         find
             .ancestor(of: find.text('즐겨찾기'), matching: find.byType(Semantics))
@@ -377,6 +386,7 @@ void main() {
       await tester.tap(find.text('즐겨찾기'));
       await tester.pump();
       expect(find.text('즐겨찾기를 해제했습니다.'), findsOneWidget);
+      expect(bookmarkPng(), findsNothing);
     });
 
     testWidgets('평점 남기기를 누르면 별점 Dialog가 뜨고 결과를 안내한다', (

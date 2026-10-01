@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_shadows.dart';
+
 /// 포스터 이미지 공통 틀 — 둥근 모서리, 로딩 전 배경색, 선택적 그림자, 위에 겹치는 요소
 ///
 /// 크기는 부모(SizedBox, AspectRatio 등)가 정하고, 이미지는 가운데 기준으로 잘라 채웁니다.
@@ -38,15 +40,7 @@ class PosterImage extends StatelessWidget {
             backgroundColor ??
             Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: radius,
-        boxShadow: hasShadow
-            ? const [
-                BoxShadow(
-                  offset: Offset(0, 1),
-                  blurRadius: 2,
-                  color: Color(0x0D000000),
-                ),
-              ]
-            : null,
+        boxShadow: hasShadow ? AppShadows.card : null,
       ),
       child: ClipRRect(
         borderRadius: radius,

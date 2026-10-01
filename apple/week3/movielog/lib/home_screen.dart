@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'data/movie.dart';
 import 'data/popular_movie.dart';
 import 'theme/app_colors.dart';
+import 'theme/app_shadows.dart';
 import 'widgets/app_header.dart';
 import 'widgets/pill_button.dart';
 import 'widgets/poster_badge.dart';
@@ -56,12 +57,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-/// 이미지 위 텍스트 그림자 — 0 4 3 #00000012, 0 2 2 #0000000F
-const _textShadows = [
-  Shadow(offset: Offset(0, 4), blurRadius: 3, color: Color(0x12000000)),
-  Shadow(offset: Offset(0, 2), blurRadius: 2, color: Color(0x0F000000)),
-];
-
 /// greeting section — 388 x 104, padding 16
 class _GreetingSection extends StatelessWidget {
   const _GreetingSection();
@@ -76,9 +71,7 @@ class _GreetingSection extends StatelessWidget {
       // Manrope 500 / 28 / 36 / -0.7, #1D1B20
       child: Text(
         '오늘은 어떤\n영화를 볼까요?',
-        style: textTheme.titleMedium?.copyWith(
-          fontSize: 28,
-          height: 36 / 28,
+        style: textTheme.headlineMedium?.copyWith(
           letterSpacing: -0.7,
           color: colors.onSurface,
         ),
@@ -139,11 +132,9 @@ class _FeaturedBanner extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
                       movie.title,
-                      style: textTheme.titleMedium?.copyWith(
-                        fontSize: 28,
-                        height: 36 / 28,
+                      style: textTheme.headlineMedium?.copyWith(
                         color: AppColors.onImage,
-                        shadows: _textShadows,
+                        shadows: AppShadows.textOnImage,
                       ),
                     ),
                   ),
@@ -157,7 +148,7 @@ class _FeaturedBanner extends StatelessWidget {
                         meta,
                         style: textTheme.bodyLarge?.copyWith(
                           color: AppColors.onImageVariant,
-                          shadows: _textShadows,
+                          shadows: AppShadows.textOnImage,
                         ),
                       ),
                     ),
@@ -171,20 +162,7 @@ class _FeaturedBanner extends StatelessWidget {
                     color: colors.onPrimaryContainer,
                     foregroundColor: AppColors.onImage,
                     gap: 8,
-                    shadows: const [
-                      BoxShadow(
-                        offset: Offset(0, 2),
-                        blurRadius: 4,
-                        spreadRadius: -2,
-                        color: Color(0x1A000000),
-                      ),
-                      BoxShadow(
-                        offset: Offset(0, 4),
-                        blurRadius: 6,
-                        spreadRadius: -1,
-                        color: Color(0x1A000000),
-                      ),
-                    ],
+                    shadows: AppShadows.raisedButton,
                     onPressed: () => context.push('/movies/${movie.id}'),
                   ),
                 ],
@@ -212,13 +190,7 @@ class _BannerChip extends StatelessWidget {
     return DecoratedBox(
       decoration: const ShapeDecoration(
         shape: StadiumBorder(),
-        shadows: [
-          BoxShadow(
-            offset: Offset(0, 1),
-            blurRadius: 2,
-            color: Color(0x0D000000),
-          ),
-        ],
+        shadows: AppShadows.card,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(9999),
@@ -236,11 +208,7 @@ class _BannerChip extends StatelessWidget {
             // 글자 스펙이 없어 칩 크기(높이 34 = 9.5 + 16 + 6.5 + 테두리 2)에서 역산: 12 / 16
             child: Text(
               label,
-              style: textTheme.titleMedium?.copyWith(
-                fontSize: 12,
-                height: 16 / 12,
-                color: AppColors.onImage,
-              ),
+              style: textTheme.bodySmall?.copyWith(color: AppColors.onImage),
             ),
           ),
         ),

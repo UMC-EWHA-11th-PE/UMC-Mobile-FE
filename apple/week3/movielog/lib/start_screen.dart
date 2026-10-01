@@ -11,7 +11,7 @@ class StartScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('MovieLog', style: TextStyle(fontSize: 32)),
+            Text('MovieLog', style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 24),
             FilledButton(
               // go: 스택을 교체하므로 시작 화면으로 되돌아오지 않음

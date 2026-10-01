@@ -49,33 +49,34 @@ class AppTheme {
     color: AppColors.onSurfaceVariant,
   );
 
-  static final ColorScheme _lightColorScheme = const ColorScheme.light().copyWith(
-    primary: AppColors.primary,
-    onPrimary: AppColors.onPrimary,
-    surface: AppColors.surface,
-    onSurface: AppColors.onSurface,
-    onSurfaceVariant: AppColors.onSurfaceVariant,
-    surfaceContainer: AppColors.surfaceContainer,
-    outlineVariant: AppColors.outlineVariant,
-    error: AppColors.error,
-    errorContainer: AppColors.errorContainer,
-    // 마이페이지 장르 칩·통계 카드 테두리
-    primaryContainer: AppColors.primaryContainer,
-    // 강조색 (헤더, 배너 칩·버튼)
-    onPrimaryContainer: AppColors.accent,
-    // 별점 별
-    tertiary: AppColors.ratingStar,
-    // 영화 목록 별점 칩
-    inverseSurface: AppColors.inverseSurface,
-    onInverseSurface: AppColors.onInverseSurface,
-    // 영화 상세 히어로·장르 칩 배경
-    surfaceContainerHigh: AppColors.surfaceContainerHigh,
-    // 하단 네비게이션
-    surfaceContainerLowest: AppColors.navBackground,
-    surfaceContainerHighest: AppColors.containerHighest,
-    secondaryContainer: AppColors.navIndicator,
-    onSecondaryContainer: AppColors.navSelected,
-  );
+  static final ColorScheme _lightColorScheme = const ColorScheme.light()
+      .copyWith(
+        primary: AppColors.primary,
+        onPrimary: AppColors.onPrimary,
+        surface: AppColors.surface,
+        onSurface: AppColors.onSurface,
+        onSurfaceVariant: AppColors.onSurfaceVariant,
+        surfaceContainer: AppColors.surfaceContainer,
+        outlineVariant: AppColors.outlineVariant,
+        error: AppColors.error,
+        errorContainer: AppColors.errorContainer,
+        // 마이페이지 장르 칩·통계 카드 테두리
+        primaryContainer: AppColors.primaryContainer,
+        // 강조색 (헤더, 배너 칩·버튼)
+        onPrimaryContainer: AppColors.accent,
+        // 별점 별
+        tertiary: AppColors.ratingStar,
+        // 영화 목록 별점 칩
+        inverseSurface: AppColors.inverseSurface,
+        onInverseSurface: AppColors.onInverseSurface,
+        // 영화 상세 히어로·장르 칩 배경
+        surfaceContainerHigh: AppColors.surfaceContainerHigh,
+        // 하단 네비게이션
+        surfaceContainerLowest: AppColors.navBackground,
+        surfaceContainerHighest: AppColors.containerHighest,
+        secondaryContainer: AppColors.navIndicator,
+        onSecondaryContainer: AppColors.navSelected,
+      );
 
   /// Figma Typography를 그대로 옮긴 TextTheme입니다.
   /// height는 line-height / font-size로 계산합니다.
@@ -228,7 +229,10 @@ class AppTheme {
         errorBorder: _inputBorder(colors.error),
         focusedErrorBorder: _inputBorder(colors.error),
         // 상태 아이콘 20x20 + 오른쪽 여백 16 (Figma padding-right)
-        suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 20),
+        suffixIconConstraints: const BoxConstraints(
+          minWidth: 36,
+          minHeight: 20,
+        ),
       ),
     );
   }

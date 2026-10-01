@@ -24,6 +24,7 @@ class PillButton extends StatelessWidget {
   });
 
   final String label;
+
   /// 아이콘 파일 경로 — .svg 또는 .png
   final String iconAsset;
   final Size iconSize;

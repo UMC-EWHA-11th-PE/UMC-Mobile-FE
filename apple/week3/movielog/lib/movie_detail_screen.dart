@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'data/movie_detail.dart';
 import 'theme/app_colors.dart';
+import 'theme/app_shadows.dart';
+import 'theme/app_theme.dart';
 import 'widgets/app_header.dart';
 import 'widgets/pill_button.dart';
 import 'widgets/poster_image.dart';
@@ -181,11 +183,7 @@ class _InfoSection extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     // Manrope 400 / 14 / 20 / 0.25, #494551
-    final captionStyle = textTheme.bodySmall?.copyWith(
-      fontSize: 14,
-      height: 20 / 14,
-      letterSpacing: 0.25,
-      fontWeight: FontWeight.w400,
+    final captionStyle = textTheme.bodyMedium?.copyWith(
       color: colors.onSurfaceVariant,
     );
 
@@ -197,9 +195,7 @@ class _InfoSection extends StatelessWidget {
           // 제목 — Manrope 500 / 28 / 36, #1B1C1A
           Text(
             detail.title,
-            style: textTheme.titleMedium?.copyWith(
-              fontSize: 28,
-              height: 36 / 28,
+            style: textTheme.headlineMedium?.copyWith(
               color: AppColors.detailText,
             ),
           ),
@@ -252,11 +248,7 @@ class _InfoSection extends StatelessWidget {
                     label: tag,
                     backgroundColor: colors.surfaceContainerHigh,
                     foregroundColor: colors.onSurfaceVariant,
-                    textStyle: textTheme.titleMedium?.copyWith(
-                      fontSize: 14,
-                      height: 20 / 14,
-                      letterSpacing: 0.1,
-                    ),
+                    textStyle: textTheme.titleSmall,
                   ),
               ],
             ),
@@ -317,11 +309,7 @@ class _SynopsisSection extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     // Manrope 500 / 16 / 26 / 0.5, #494551
-    final bodyStyle = textTheme.titleMedium?.copyWith(
-      height: 26 / 16,
-      letterSpacing: 0.5,
-      color: colors.onSurfaceVariant,
-    );
+    const bodyStyle = AppTheme.synopsisBody;
 
     // Container는 테두리 두께(1)를 안쪽 여백에 더해 줘서 Figma 높이(563)와 맞습니다.
     return Container(
@@ -365,8 +353,7 @@ class _ActionBar extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     // 버튼 글자 — Manrope 500 / 14 / 20 / 0.1
-    final labelStyle = Theme.of(context).textTheme.titleMedium
-        ?.copyWith(fontSize: 14, height: 20 / 14, letterSpacing: 0.1);
+    final labelStyle = Theme.of(context).textTheme.titleSmall;
 
     // Container는 테두리 두께(1)를 안쪽 여백에 더해 줘서 Figma 높이(81)와 맞습니다.
     return Container(
@@ -410,13 +397,7 @@ class _ActionBar extends StatelessWidget {
                   color: colors.primary,
                   foregroundColor: colors.onPrimary,
                   textStyle: labelStyle,
-                  shadows: const [
-                    BoxShadow(
-                      offset: Offset(0, 1),
-                      blurRadius: 2,
-                      color: Color(0x0D000000),
-                    ),
-                  ],
+                  shadows: AppShadows.card,
                   onPressed: onRate,
                 ),
               ),
