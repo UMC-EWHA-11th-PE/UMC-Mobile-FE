@@ -41,6 +41,8 @@ class MovieRatingInput extends StatelessWidget {
           ),
           // 선택하지 않은 부분은 같은 별 모양을 이 색으로 칠합니다.
           unratedColor: AppColors.ratingUnrated,
+          // 누르거나 드래그하는 동안 별 주위에 생기는 빛 효과(기본 파란색)를 끕니다.
+          glow: false,
           itemBuilder: (context, index) {
             return SvgPicture.asset(
               'assets/icons/rating_star_filled.svg',

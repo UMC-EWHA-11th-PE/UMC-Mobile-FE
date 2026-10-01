@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
 import 'theme/app_theme.dart';
 import 'widgets/common_app_bar.dart';
@@ -84,67 +85,77 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _validatePassword(_passwordController.text) == null &&
       _agreedToTerms;
 
-  /// 가입하기 — Form 전체를 다시 검증한 뒤 통과했을 때만 진행합니다.
+  /// 가입하기 — Form 전체를 다시 검증한 뒤 통과했을 때만 홈으로 이동합니다.
+  /// go로 이동해 회원가입 화면을 스택에서 빼므로 홈에서 뒤로 돌아오지 않습니다.
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
+    // ScaffoldMessenger는 앱 전체에 하나라 홈으로 이동한 뒤에도 안내가 보입니다.
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${_nicknameController.text.trim()}님, 환영합니다!')),
     );
+    context.go('/home');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CommonAppBar(title: '회원가입'),
-      body: SafeArea(
-        // 키보드가 올라와도 입력창이 가려지지 않도록 스크롤 가능하게 만듭니다.
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            child: ConstrainedBox(
-              // 내용이 짧아도 하단 영역이 화면 아래에 붙도록 최소 높이를 보장합니다.
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Form(
-                key: _formKey,
-                // 사용자가 입력을 시작한 필드부터 즉시 검사합니다. (W2-02)
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                // 메인 컨테이너: padding 24 / 16, gap 32
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                  // Expanded를 스크롤 뷰 안에서 쓰기 위해 IntrinsicHeight로 높이를 확정합니다.
-                  child: IntrinsicHeight(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const _WelcomeMessage(),
-                        const SizedBox(height: 32),
-                        _SignupFields(
-                          nicknameController: _nicknameController,
-                          emailController: _emailController,
-                          passwordController: _passwordController,
-                          passwordFocusNode: _passwordFocusNode,
-                          validateNickname: _validateNickname,
-                          validateEmail: _validateEmail,
-                          validatePassword: _validatePassword,
-                          // 입력이 바뀔 때마다 버튼 활성화와 상태 아이콘을 다시 계산합니다.
-                          onChanged: () => setState(() {}),
-                          onPasswordSubmitted: _canSubmit ? _submit : null,
-                        ),
-                        const SizedBox(height: 32),
-                        // 하단 컨테이너(Fill)는 남은 공간을 채우고 내용은 아래에 붙입니다.
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.bottomCenter,
-                            child: _SignupFooter(
-                              agreedToTerms: _agreedToTerms,
-                              onAgreedChanged: (value) =>
-                                  setState(() => _agreedToTerms = value),
-                              onSubmit: _canSubmit ? _submit : null,
+    // 회원가입에서는 시스템 뒤로가기(Android 뒤로 버튼 등)도 막습니다.
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        appBar: const CommonAppBar(title: '회원가입', showBack: false),
+        body: SafeArea(
+          // 키보드가 올라와도 입력창이 가려지지 않도록 스크롤 가능하게 만듭니다.
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: ConstrainedBox(
+                // 내용이 짧아도 하단 영역이 화면 아래에 붙도록 최소 높이를 보장합니다.
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Form(
+                  key: _formKey,
+                  // 사용자가 입력을 시작한 필드부터 즉시 검사합니다. (W2-02)
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  // 메인 컨테이너: padding 24 / 16, gap 32
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 24,
+                    ),
+                    // Expanded를 스크롤 뷰 안에서 쓰기 위해 IntrinsicHeight로 높이를 확정합니다.
+                    child: IntrinsicHeight(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const _WelcomeMessage(),
+                          const SizedBox(height: 32),
+                          _SignupFields(
+                            nicknameController: _nicknameController,
+                            emailController: _emailController,
+                            passwordController: _passwordController,
+                            passwordFocusNode: _passwordFocusNode,
+                            validateNickname: _validateNickname,
+                            validateEmail: _validateEmail,
+                            validatePassword: _validatePassword,
+                            // 입력이 바뀔 때마다 버튼 활성화와 상태 아이콘을 다시 계산합니다.
+                            onChanged: () => setState(() {}),
+                            onPasswordSubmitted: _canSubmit ? _submit : null,
+                          ),
+                          const SizedBox(height: 32),
+                          // 하단 컨테이너(Fill)는 남은 공간을 채우고 내용은 아래에 붙입니다.
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: _SignupFooter(
+                                agreedToTerms: _agreedToTerms,
+                                onAgreedChanged: (value) =>
+                                    setState(() => _agreedToTerms = value),
+                                onSubmit: _canSubmit ? _submit : null,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -225,7 +236,10 @@ class _SignupFields extends StatelessWidget {
             style: textTheme.bodyLarge,
             decoration: InputDecoration(
               hintText: '닉네임을 입력해주세요',
-              suffixIcon: _statusIcon(nicknameController.text, validateNickname),
+              suffixIcon: _statusIcon(
+                nicknameController.text,
+                validateNickname,
+              ),
             ),
           ),
         ),
@@ -262,7 +276,10 @@ class _SignupFields extends StatelessWidget {
             style: textTheme.bodyLarge,
             decoration: InputDecoration(
               hintText: '비밀번호를 입력해주세요',
-              suffixIcon: _statusIcon(passwordController.text, validatePassword),
+              suffixIcon: _statusIcon(
+                passwordController.text,
+                validatePassword,
+              ),
             ),
           ),
         ),
@@ -309,7 +326,9 @@ class _StatusIcon extends StatelessWidget {
       padding: const EdgeInsets.only(right: 16),
       // 공통 에셋 SVG를 쓰고 colorFilter로 상태 색을 입힙니다.
       child: SvgPicture.asset(
-        hasError ? 'assets/icons/error.svg' : 'assets/icons/check_circle_filled.svg',
+        hasError
+            ? 'assets/icons/error.svg'
+            : 'assets/icons/check_circle_filled.svg',
         width: 20,
         height: 20,
         colorFilter: ColorFilter.mode(

@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import 'theme/app_shadows.dart';
+import 'theme/app_theme.dart';
 
 class MainScreen extends StatelessWidget {
   const MainScreen({
@@ -148,7 +149,7 @@ class _NavItem extends StatelessWidget {
     // Figma 라벨 높이: 선택 10.8 (홈 탭), 미선택 16 (마이 탭)
     final labelHeight = selected ? 10.8 : 16.0;
     final labelStyle = selected
-        ? textTheme.labelSmall?.copyWith(color: color)
+        ? AppTheme.navLabelSelected.copyWith(color: color)
         : textTheme.bodySmall?.copyWith(color: color);
 
     return Semantics(

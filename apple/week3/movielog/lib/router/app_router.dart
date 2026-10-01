@@ -22,9 +22,9 @@ class AppRouter {
       ),
       // 영화 상세 — 하단 탭 없이 전체 화면으로 표시 (예: /movies/1)
       GoRoute(
-        path: '/movies/:id',
+        path: '/movies/:movieId',
         builder: (context, state) => MovieDetailScreen(
-          movieId: int.tryParse(state.pathParameters['id'] ?? ''),
+          movieId: int.tryParse(state.pathParameters['movieId'] ?? ''),
         ),
       ),
       // 하단 탭(홈/영화/마이)을 공유하는 화면들

@@ -40,6 +40,14 @@ class AppTheme {
     color: AppColors.accent,
   );
 
+  /// 하단 네비게이션 선택 라벨 — Manrope 500 / 11, 높이 10.8 (Figma 박스 높이에서 역산)
+  static const TextStyle navLabelSelected = TextStyle(
+    fontSize: 11,
+    height: 10.8 / 11,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w500,
+  );
+
   /// 평점 Dialog 제목 — Manrope 700 / 20 / 100%, #25232A
   static const TextStyle dialogTitle = TextStyle(
     fontSize: 20,
@@ -162,13 +170,13 @@ class AppTheme {
       fontWeight: FontWeight.w500,
       color: AppColors.onSurfaceVariant,
     ),
-    // 하단 네비게이션 선택 라벨 — Manrope 500 / 11, 높이 10.8 (Figma 박스 높이에서 역산)
+    // 시작 화면 FLUTTER 1주차 — Manrope 500 / 11 / 16 / 0.55 (1주차)
     labelSmall: TextStyle(
       fontSize: 11,
-      height: 10.8 / 11,
-      letterSpacing: 0,
+      height: 16 / 11,
+      letterSpacing: 0.55,
       fontWeight: FontWeight.w500,
-      color: AppColors.onSurface,
+      color: AppColors.onSurfaceVariant,
     ),
     // 가입하기 — Manrope 500 / 16 / 24 / 0
     labelLarge: TextStyle(

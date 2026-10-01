@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import 'data/movie_detail.dart';
@@ -7,6 +6,7 @@ import 'theme/app_colors.dart';
 import 'theme/app_shadows.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_header.dart';
+import 'widgets/movie_rating_indicator.dart';
 import 'widgets/pill_button.dart';
 import 'widgets/poster_image.dart';
 import 'widgets/rating_dialog.dart';
@@ -209,7 +209,12 @@ class _InfoSection extends StatelessWidget {
               height: 24,
               child: Row(
                 children: [
-                  _StarRating(rating: detail.rating),
+                  // 평균 평점 — RatingBarIndicator로 읽기 전용 표시, 별 하나 16.67
+                  MovieRatingIndicator(
+                    rating: detail.rating,
+                    itemSize: 50 / 3,
+                    showValue: false,
+                  ),
                   const SizedBox(width: 4),
                   // 4.5 마진 — padding-left 8, Manrope 500 / 16 / 24 / 0.15, #1B1C1A
                   Padding(
@@ -253,43 +258,6 @@ class _InfoSection extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 별 5개 — 별 하나 16.67 x 15.83, 간격 없음, #6750A4
-/// 1점 단위는 채운 별, 0.5점 이상 남으면 반 별, 나머지는 빈 별
-class _StarRating extends StatelessWidget {
-  const _StarRating({required this.rating});
-
-  final double rating;
-
-  String _assetFor(int index) {
-    final remain = rating - index;
-    if (remain >= 1) return 'assets/icons/rating_star_filled.svg';
-    if (remain >= 0.5) return 'assets/icons/rating_star_half.svg';
-    return 'assets/icons/rating_star_outline.svg';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
-
-    return Semantics(
-      label: '별점 ${rating.toStringAsFixed(1)}점',
-      excludeSemantics: true,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < 5; i++)
-            SvgPicture.asset(
-              _assetFor(i),
-              width: 50 / 3,
-              height: 95 / 6,
-              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-            ),
         ],
       ),
     );

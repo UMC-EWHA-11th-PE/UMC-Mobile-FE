@@ -6,10 +6,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import 'data/movie.dart';
-import 'data/popular_movie.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_shadows.dart';
 import 'widgets/app_header.dart';
+import 'widgets/movie_card.dart';
 import 'widgets/pill_button.dart';
 import 'widgets/poster_badge.dart';
 import 'widgets/poster_image.dart';
@@ -33,25 +33,29 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const AppHeader.tab(title: 'MovieLog'),
-      body: ListView(
-        // Figma padding-bottom 96 = 하단 네비(80)에 가려지는 영역 + 여백 16.
-        // 여기서는 네비가 본문을 덮지 않으므로 여백 16만 둡니다.
-        padding: const EdgeInsets.only(bottom: 16),
-        children: [
-          const _GreetingSection(),
-          // 중간 섹션 — padding 0 / 16 / 24 / 16
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            child: _FeaturedBanner(
-              movie: movies.first,
-              backdropAsset: _featuredBackdrop,
-              meta: _featuredMeta,
+    // 홈에서는 시스템 뒤로가기(Android 뒤로 버튼 등)로 회원가입·시작 화면에 돌아가지 않습니다.
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        appBar: const AppHeader.tab(title: 'MovieLog'),
+        body: ListView(
+          // Figma padding-bottom 96 = 하단 네비(80)에 가려지는 영역 + 여백 16.
+          // 여기서는 네비가 본문을 덮지 않으므로 여백 16만 둡니다.
+          padding: const EdgeInsets.only(bottom: 16),
+          children: [
+            const _GreetingSection(),
+            // 중간 섹션 — padding 0 / 16 / 24 / 16
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              child: _FeaturedBanner(
+                movie: movies.first,
+                backdropAsset: _featuredBackdrop,
+                meta: _featuredMeta,
+              ),
             ),
-          ),
-          const _PopularSection(movies: popularMovies),
-        ],
+            const _PopularSection(movies: popularMovies),
+          ],
+        ),
       ),
     );
   }
@@ -222,7 +226,7 @@ class _BannerChip extends StatelessWidget {
 class _PopularSection extends StatelessWidget {
   const _PopularSection({required this.movies});
 
-  final List<PopularMovie> movies;
+  final List<Movie> movies;
 
   @override
   Widget build(BuildContext context) {
@@ -310,13 +314,13 @@ class _SeeAllButton extends StatelessWidget {
   }
 }
 
-/// 영화 카드 — 140 x 256
-/// 포스터(200) + 마진 12 + 제목(24) + 별점 영역(20)
+/// 인기 영화 카드 — 공통 [MovieCard], 140 x 256
+/// 포스터 140 x 200 (radius 16) + 마진 12 + 제목 24 + 별점 영역 20
 class _PopularMovieCard extends StatelessWidget {
   const _PopularMovieCard({required this.rank, required this.movie});
 
   final int rank;
-  final PopularMovie movie;
+  final Movie movie;
 
   @override
   Widget build(BuildContext context) {
@@ -325,78 +329,52 @@ class _PopularMovieCard extends StatelessWidget {
 
     return SizedBox(
       width: 140,
-      child: Column(
-        // 목록 높이(272)를 채우지 않고 카드 높이(256)만 차지
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 마진 — padding-bottom 12
-          // 배경 그림자 — 140 x 200, radius 16, #E6E0E9, box-shadow 0 1 2 #0000000D
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SizedBox(
-              height: 200,
-              child: PosterImage(
-                asset: movie.posterAsset,
-                borderRadius: 16,
-                hasShadow: true,
-                overlays: [
-                  // 순위 칩 — 24 x 26, 배경 #00000099, border 1px #FFFFFF1A
-                  Positioned(
-                    left: 8,
-                    top: 8,
-                    child: PosterBadge(
-                      label: '$rank',
-                      backgroundColor: AppColors.rankChip,
-                      foregroundColor: AppColors.onImage,
-                      borderColor: AppColors.rankChipOutline,
-                    ),
+      child: MovieCard(
+        movie: movie,
+        posterAspectRatio: 140 / 200,
+        posterRadius: 16,
+        // 순위 칩 — 24 x 26, 배경 #00000099, border 1px #FFFFFF1A
+        badge: Positioned(
+          left: 8,
+          top: 8,
+          child: PosterBadge(
+            label: '$rank',
+            backgroundColor: AppColors.rankChip,
+            foregroundColor: AppColors.onImage,
+            borderColor: AppColors.rankChipOutline,
+          ),
+        ),
+        // 별점 영역 — padding-top 4, 내부 16, gap 4
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: SizedBox(
+            height: 16,
+            child: Row(
+              children: [
+                // 별 11.67 x 11.08, #C9A74D
+                SvgPicture.asset(
+                  'assets/icons/rating_star_filled.svg',
+                  width: 11.667,
+                  height: 11.083,
+                  colorFilter: ColorFilter.mode(
+                    colors.tertiary,
+                    BlendMode.srcIn,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 4),
+                // Manrope 400 / 12 / 16, #494551
+                // Figma 홈 카드는 10점 만점(9.6)이라 5점 만점 평점을 x2 해서 표시
+                Text(
+                  (movie.rating * 2).toStringAsFixed(1),
+                  style: textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
-          // 제목 — 140 x 24, Manrope 500 / 16 / 24, #1D1B20
-          SizedBox(
-            height: 24,
-            child: Text(
-              movie.title,
-              style: textTheme.titleMedium,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          // 별점 영역 — padding-top 4, 내부 16, gap 4
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: SizedBox(
-              height: 16,
-              child: Row(
-                children: [
-                  // 별 11.67 x 11.08, #C9A74D
-                  SvgPicture.asset(
-                    'assets/icons/rating_star_filled.svg',
-                    width: 11.667,
-                    height: 11.083,
-                    colorFilter: ColorFilter.mode(
-                      colors.tertiary,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  // Manrope 400 / 12 / 16, #494551
-                  Text(
-                    movie.rating.toStringAsFixed(1),
-                    style: textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w400,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

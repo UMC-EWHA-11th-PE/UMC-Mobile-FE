@@ -80,7 +80,7 @@ class AppColors {
   /// 영화 상세 히어로 배경, 장르 칩 배경
   static const Color surfaceContainerHigh = Color(0xFFE3E2DF);
 
-  /// 영화 상세 제목·시놉시스 제목·평점 숫자 (#1B1C1A)
+  /// 영화 상세 제목·시놉시스 제목·평점 숫자, 시작 화면 제목 (#1B1C1A)
   /// 다른 화면의 onSurface(#1D1B20)와 미세하게 달라 상세 화면에서만 직접 사용합니다.
   static const Color detailText = Color(0xFF1B1C1A);
 

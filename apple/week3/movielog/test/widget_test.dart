@@ -4,29 +4,135 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:movielog/main.dart';
 import 'package:movielog/router/app_router.dart';
+import 'package:movielog/widgets/movie_card.dart';
 
 void main() {
   // AppRouter.router는 static이라 테스트마다 시작 화면으로 되돌림
   setUp(() => AppRouter.router.go('/start'));
 
-  testWidgets('시작 화면에서 회원가입 화면으로 이동한다', (WidgetTester tester) async {
+  testWidgets('시작 → 회원가입 → 홈으로 이동하고, 회원가입·홈에서는 뒤로 갈 수 없다', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(const MovieLogApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('MovieLog'), findsOneWidget);
-
-    await tester.tap(find.text('회원가입'));
+    // 시작 화면 (1주차 W1-00)
+    expect(find.text('영화의 순간을\n기록하세요'), findsOneWidget);
+    await tester.tap(find.text('시작하기'));
     await tester.pumpAndSettle();
 
+    // 회원가입: 뒤로가기 버튼 없음, 돌아갈 화면 없음
     expect(find.text('환영합니다!\n간단한 정보만 입력하고 시작해보세요.'), findsOneWidget);
-    expect(find.text('가입하기'), findsOneWidget);
+    expect(find.byTooltip('뒤로가기'), findsNothing);
+    expect(AppRouter.router.canPop(), isFalse);
+
+    // 검증 전에는 가입하기 비활성
+    ElevatedButton submitButton() => tester.widget<ElevatedButton>(
+      find.ancestor(
+        of: find.text('가입하기'),
+        matching: find.byType(ElevatedButton),
+      ),
+    );
+    expect(submitButton().onPressed, isNull);
+
+    // 닉네임·이메일·비밀번호 입력 + 약관 동의 → 가입하기 활성
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), '밍고');
+    await tester.enterText(fields.at(1), 'mingo@example.com');
+    await tester.enterText(fields.at(2), 'password123');
+    await tester.ensureVisible(find.text('필수 약관에 동의합니다'));
+    await tester.tap(find.text('필수 약관에 동의합니다'));
+    await tester.pumpAndSettle();
+    expect(submitButton().onPressed, isNotNull);
+
+    await tester.ensureVisible(find.text('가입하기'));
+    await tester.tap(find.text('가입하기'));
+    await tester.pumpAndSettle();
+
+    // 홈 도착 + 환영 안내, 뒤로 돌아갈 화면 없음
+    expect(find.text('오늘은 어떤\n영화를 볼까요?'), findsOneWidget);
+    expect(find.text('밍고님, 환영합니다!'), findsOneWidget);
+    expect(AppRouter.router.canPop(), isFalse);
+
+    // 시스템 뒤로가기(Android 뒤로 버튼)를 눌러도 홈에 그대로 있음
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('오늘은 어떤\n영화를 볼까요?'), findsOneWidget);
   });
 
-  testWidgets('시작하기 후 하단 탭으로 홈/영화/마이를 이동한다', (WidgetTester tester) async {
+  testWidgets('홈 인기 영화 카드를 누르면 같은 ID의 영화 상세로 이동한다', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpAndSettle();
+    AppRouter.router.go('/home');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('마션 레스큐'));
+    await tester.pumpAndSettle();
+    expect(find.text('Cinema Archive'), findsOneWidget);
+    expect(find.text('마션 레스큐'), findsOneWidget);
+    // push로 쌓인 맨 위 화면의 경로
+    expect(
+      AppRouter.router.routerDelegate.currentConfiguration.last.matchedLocation,
+      '/movies/7',
+    );
+
+    // 상세에서 뒤로가기 → 홈
+    await tester.tap(find.byTooltip('뒤로가기'));
+    await tester.pumpAndSettle();
+    expect(find.text('오늘은 어떤\n영화를 볼까요?'), findsOneWidget);
+  });
+
+  testWidgets('별빛 아래 우리는 홈·목록·상세에서 같은 ID(1)와 제목을 쓴다', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    // push로 쌓인 맨 위 화면의 경로
+    String currentPath() => AppRouter
+        .router
+        .routerDelegate
+        .currentConfiguration
+        .last
+        .matchedLocation;
+
     await tester.pumpWidget(const MovieLogApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('시작하기'));
+    // 홈 배너 → 상세
+    AppRouter.router.go('/home');
+    await tester.pumpAndSettle();
+    expect(find.text('별빛 아래 우리'), findsOneWidget);
+    await tester.tap(find.text('상세보기'));
+    await tester.pumpAndSettle();
+    expect(currentPath(), '/movies/1');
+    expect(find.text('별빛 아래 우리'), findsOneWidget);
+
+    // 목록 카드 → 상세
+    AppRouter.router.go('/movies');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('별빛 아래 우리'));
+    await tester.pumpAndSettle();
+    expect(currentPath(), '/movies/1');
+    expect(find.text('별빛 아래 우리'), findsOneWidget);
+  });
+
+  testWidgets('하단 탭으로 홈/영화/마이를 이동한다', (WidgetTester tester) async {
+    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpAndSettle();
+
+    AppRouter.router.go('/home');
     await tester.pumpAndSettle();
     expect(find.text('오늘은 어떤\n영화를 볼까요?'), findsOneWidget);
 
@@ -43,7 +149,7 @@ void main() {
   testWidgets('하단 네비게이션이 Figma 크기를 따른다', (WidgetTester tester) async {
     await tester.pumpWidget(const MovieLogApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.text('시작하기'));
+    AppRouter.router.go('/home');
     await tester.pumpAndSettle();
 
     // 라벨을 감싸는 pill(StadiumBorder Material)의 크기
@@ -65,7 +171,7 @@ void main() {
   testWidgets('홈 헤더가 Figma 크기를 따른다', (WidgetTester tester) async {
     await tester.pumpWidget(const MovieLogApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.text('시작하기'));
+    AppRouter.router.go('/home');
     await tester.pumpAndSettle();
 
     expect(find.text('MovieLog'), findsOneWidget);
@@ -85,7 +191,7 @@ void main() {
 
     await tester.pumpWidget(const MovieLogApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.text('시작하기'));
+    AppRouter.router.go('/home');
     await tester.pumpAndSettle();
 
     // greeting section 388 x 104
@@ -135,7 +241,7 @@ void main() {
 
     await tester.pumpWidget(const MovieLogApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.text('시작하기'));
+    AppRouter.router.go('/home');
     await tester.pumpAndSettle();
 
     // 섹션 제목 줄 높이 28, 배너 섹션(padding-bottom 24) 바로 아래
@@ -192,7 +298,7 @@ void main() {
 
     await tester.pumpWidget(const MovieLogApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.text('시작하기'));
+    AppRouter.router.go('/home');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('전체보기'));
@@ -209,18 +315,14 @@ void main() {
 
       await tester.pumpWidget(const MovieLogApp());
       await tester.pumpAndSettle();
-      await tester.tap(find.text('시작하기'));
+      AppRouter.router.go('/home');
       await tester.pumpAndSettle();
       await tester.tap(find.text('영화'));
       await tester.pumpAndSettle();
     }
 
-    Finder itemOf(String title) => find.ancestor(
-      of: find.text(title),
-      matching: find.byWidgetPredicate(
-        (widget) => widget is Column && widget.children.length == 3,
-      ),
-    );
+    Finder itemOf(String title) =>
+        find.ancestor(of: find.text(title), matching: find.byType(MovieCard));
 
     testWidgets('Figma 크기를 따른다', (WidgetTester tester) async {
       await openMovieList(tester);
@@ -291,7 +393,7 @@ void main() {
 
       await tester.pumpWidget(const MovieLogApp());
       await tester.pumpAndSettle();
-      await tester.tap(find.text('시작하기'));
+      AppRouter.router.go('/home');
       await tester.pumpAndSettle();
       await tester.tap(find.text('영화'));
       await tester.pumpAndSettle();
@@ -423,7 +525,7 @@ void main() {
 
     await tester.pumpWidget(const MovieLogApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.text('시작하기'));
+    AppRouter.router.go('/home');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('상세보기'));
@@ -439,7 +541,7 @@ void main() {
 
     await tester.pumpWidget(const MovieLogApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.text('시작하기'));
+    AppRouter.router.go('/home');
     await tester.pumpAndSettle();
     await tester.tap(find.text('마이'));
     await tester.pumpAndSettle();

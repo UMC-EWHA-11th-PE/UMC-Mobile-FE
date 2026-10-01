@@ -10,6 +10,7 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     required this.title,
     this.onBack,
+    this.showBack = true,
   });
 
   final String title;
@@ -17,12 +18,19 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// null이면 Navigator.maybePop을 호출합니다.
   final VoidCallback? onBack;
 
+  /// false면 뒤로가기 버튼을 숨깁니다. (예: 뒤로 갈 수 없는 회원가입 화면)
+  final bool showBack;
+
   @override
   Size get preferredSize => const Size.fromHeight(AppTheme.appBarHeight);
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+
+    if (!showBack) {
+      return AppBar(title: Text(title), automaticallyImplyLeading: false);
+    }
 
     return AppBar(
       title: Text(title),

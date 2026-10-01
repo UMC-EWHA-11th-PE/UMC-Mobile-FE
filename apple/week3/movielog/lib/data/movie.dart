@@ -71,11 +71,45 @@ const movies = [
   ),
 ];
 
+/// 홈 '인기 영화' 섹션 Mock 데이터 (W3-01 Figma) — 순위는 목록 순서(1부터)
+/// Figma 홈 카드는 10점 만점(9.6)으로 표시하므로 평점은 5점 만점 값으로 저장하고 화면에서 x2 합니다.
+/// 장르·연도는 Figma에 없어 임의의 Mock 값입니다.
+const popularMovies = [
+  // 에셋 팩의 poster_abyss_walker.jpg는 이름과 달리 MISSION: IMPROBABLE 이미지라
+  // Figma에서 내보낸 ABYSS WALKER 포스터를 사용합니다.
+  Movie(
+    id: 7,
+    title: '마션 레스큐',
+    genre: 'SF',
+    year: 2024,
+    rating: 4.8,
+    posterAsset: 'assets/images/posters/poster_martian_rescue.png',
+  ),
+  Movie(
+    id: 8,
+    title: '스파이 코드',
+    genre: '액션',
+    year: 2024,
+    rating: 4.6,
+    posterAsset: 'assets/images/posters/poster_spy_code.png',
+  ),
+  // TODO: 포스터가 화면에 보이는 부분(76 x 200)만 잘린 이미지라 전체 이미지로 교체 필요
+  Movie(
+    id: 9,
+    title: '비오는 날의 기억',
+    genre: '드라마',
+    year: 2023,
+    rating: 4.45,
+    posterAsset: 'assets/images/posters/poster_rainy_day.jpg',
+  ),
+];
+
 /// 필터 칩에 표시할 장르 목록 — 영화 목록에 처음 등장한 순서대로
 List<String> get movieGenres => {for (final movie in movies) movie.genre}.toList();
 
+/// 영화 목록·홈 인기 영화 어디에서 눌러도 같은 ID로 찾을 수 있습니다.
 Movie? findMovieById(int? id) {
-  for (final movie in movies) {
+  for (final movie in [...movies, ...popularMovies]) {
     if (movie.id == id) return movie;
   }
   return null;
