@@ -53,9 +53,8 @@ void main() {
     await tester.tap(find.text('가입하기'));
     await tester.pumpAndSettle();
 
-    // 홈 도착 + 환영 안내, 뒤로 돌아갈 화면 없음
+    // 홈 도착, 뒤로 돌아갈 화면 없음
     expect(find.text('오늘은 어떤\n영화를 볼까요?'), findsOneWidget);
-    expect(find.text('밍고님, 환영합니다!'), findsOneWidget);
     expect(AppRouter.router.canPop(), isFalse);
 
     // 시스템 뒤로가기(Android 뒤로 버튼)를 눌러도 홈에 그대로 있음

@@ -90,10 +90,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
-    // ScaffoldMessenger는 앱 전체에 하나라 홈으로 이동한 뒤에도 안내가 보입니다.
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${_nicknameController.text.trim()}님, 환영합니다!')),
-    );
     context.go('/home');
   }
 
