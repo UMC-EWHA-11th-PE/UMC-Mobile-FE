@@ -28,6 +28,27 @@ class AppTheme {
   /// 입력창의 높이입니다. (Figma: 42px)
   static const double inputHeight = 42;
 
+  /// 마이페이지 통계 카드의 모서리 반경입니다. (1주차 Figma: 12px)
+  static const double statRadius = 12;
+
+  /// 마이페이지 통계 숫자 — Manrope 700 / 22 / 28 / 0, #4F378A (1주차)
+  static const TextStyle statValue = TextStyle(
+    fontSize: 22,
+    height: 28 / 22,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+    color: AppColors.accent,
+  );
+
+  /// 영화 상세 시놉시스 본문 — Manrope 500 / 16 / 26 / 0.5, #494551
+  static const TextStyle synopsisBody = TextStyle(
+    fontSize: 16,
+    height: 26 / 16,
+    letterSpacing: 0.5,
+    fontWeight: FontWeight.w500,
+    color: AppColors.onSurfaceVariant,
+  );
+
   static final ColorScheme _lightColorScheme = const ColorScheme.light().copyWith(
     primary: AppColors.primary,
     onPrimary: AppColors.onPrimary,
@@ -38,6 +59,8 @@ class AppTheme {
     outlineVariant: AppColors.outlineVariant,
     error: AppColors.error,
     errorContainer: AppColors.errorContainer,
+    // 마이페이지 장르 칩·통계 카드 테두리
+    primaryContainer: AppColors.primaryContainer,
     // 강조색 (헤더, 배너 칩·버튼)
     onPrimaryContainer: AppColors.accent,
     // 별점 별
@@ -57,6 +80,14 @@ class AppTheme {
   /// Figma Typography를 그대로 옮긴 TextTheme입니다.
   /// height는 line-height / font-size로 계산합니다.
   static const TextTheme _textTheme = TextTheme(
+    // 홈 인사말·배너 제목, 영화 상세 제목 — Manrope 500 / 28 / 36 / 0
+    headlineMedium: TextStyle(
+      fontSize: 28,
+      height: 36 / 28,
+      letterSpacing: 0,
+      fontWeight: FontWeight.w500,
+      color: AppColors.onSurface,
+    ),
     // 회원가입 (헤더 제목) — Manrope 500 / 22 / 28 / 0
     titleLarge: TextStyle(
       fontSize: 22,
@@ -73,6 +104,14 @@ class AppTheme {
       fontWeight: FontWeight.w500,
       color: AppColors.onSurface,
     ),
+    // 영화 상세 장르 칩·하단 버튼 — Manrope 500 / 14 / 20 / 0.1
+    titleSmall: TextStyle(
+      fontSize: 14,
+      height: 20 / 14,
+      letterSpacing: 0.1,
+      fontWeight: FontWeight.w500,
+      color: AppColors.onSurface,
+    ),
     // 입력 텍스트 — Manrope 400 / 16 / 24 / 0
     bodyLarge: TextStyle(
       fontSize: 16,
@@ -81,6 +120,14 @@ class AppTheme {
       fontWeight: FontWeight.w400,
       color: AppColors.inputText,
     ),
+    // 영화 상세 연도·장르·러닝타임, 별점 참여 수 — Manrope 400 / 14 / 20 / 0.25
+    bodyMedium: TextStyle(
+      fontSize: 14,
+      height: 20 / 14,
+      letterSpacing: 0.25,
+      fontWeight: FontWeight.w400,
+      color: AppColors.onSurface,
+    ),
     // 오류 안내 문구 — Manrope 500 / 12 / 16
     bodySmall: TextStyle(
       fontSize: 12,
@@ -88,6 +135,14 @@ class AppTheme {
       letterSpacing: 0,
       fontWeight: FontWeight.w500,
       color: AppColors.onSurfaceVariant,
+    ),
+    // 하단 네비게이션 선택 라벨 — Manrope 500 / 11, 높이 10.8 (Figma 박스 높이에서 역산)
+    labelSmall: TextStyle(
+      fontSize: 11,
+      height: 10.8 / 11,
+      letterSpacing: 0,
+      fontWeight: FontWeight.w500,
+      color: AppColors.onSurface,
     ),
     // 가입하기 — Manrope 500 / 16 / 24 / 0
     labelLarge: TextStyle(

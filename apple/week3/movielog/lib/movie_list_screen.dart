@@ -1,15 +1,15 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'data/movie.dart';
-import 'widgets/main_header.dart';
+import 'widgets/app_header.dart';
+import 'widgets/poster_badge.dart';
+import 'widgets/poster_image.dart';
 
 /// W3-02 영화 목록 화면입니다.
 ///
 /// 화면은 의미 단위로 나뉩니다.
-/// - [MainHeader] 영화 제목, 검색 버튼
+/// - [AppHeader] 영화 제목, 검색 버튼
 /// - [_GenreFilterBar] 장르 필터 칩 (전체 + 장르)
 /// - [_MovieGridItem] 2열 그리드의 영화 카드
 class MovieListScreen extends StatefulWidget {
@@ -34,7 +34,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
     final filtered = _filteredMovies;
 
     return Scaffold(
-      appBar: const MainHeader(title: '영화'),
+      appBar: const AppHeader.tab(title: '영화'),
       body: CustomScrollView(
         slivers: [
           // 필터 칩 영역 — 358 x 40, 헤더 아래 8
@@ -186,38 +186,25 @@ class _MovieGridItem extends StatelessWidget {
           // 배경+그림자 — radius 12, #E6E0E9, box-shadow 0 1 2 #0000000D
           AspectRatio(
             aspectRatio: 2 / 3,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: colors.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
-                  BoxShadow(
-                    offset: Offset(0, 1),
-                    blurRadius: 2,
-                    color: Color(0x0D000000),
+            child: PosterImage(
+              asset: movie.posterAsset,
+              borderRadius: 12,
+              hasShadow: true,
+              overlays: [
+                // 별점 칩 — 48 x 24, 배경 #322F35CC, 글자 #F5EFF7
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: PosterBadge(
+                    label: '★ ${movie.rating.toStringAsFixed(1)}',
+                    // #322F35 + 투명도 CC(204/255)
+                    backgroundColor: colors.inverseSurface.withValues(
+                      alpha: 0xCC / 0xFF,
+                    ),
+                    foregroundColor: colors.onInverseSurface,
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.asset(
-                      movie.posterAsset,
-                      fit: BoxFit.cover,
-                      // 포스터가 없으면 배경색(#E6E0E9)만 보여줍니다.
-                      errorBuilder: (context, error, stackTrace) =>
-                          const SizedBox.shrink(),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: _RatingChip(rating: movie.rating),
-                    ),
-                  ],
                 ),
-              ),
+              ],
             ),
           ),
           const SizedBox(height: 4),
@@ -256,43 +243,6 @@ class _MovieGridItem extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// 포스터 위 별점 칩 — 48 x 24, radius 6, padding 4 / 8
-/// 배경 #322F35CC, backdrop blur 4, 글자 Manrope 700 / 12 / 16 #F5EFF7
-class _RatingChip extends StatelessWidget {
-  const _RatingChip({required this.rating});
-
-  final double rating;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final radius = BorderRadius.circular(6);
-
-    return ClipRRect(
-      borderRadius: radius,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            // #322F35 + 투명도 CC(204/255)
-            color: colors.inverseSurface.withValues(alpha: 0xCC / 0xFF),
-            borderRadius: radius,
-          ),
-          child: Text(
-            '★ ${rating.toStringAsFixed(1)}',
-            style: textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: colors.onInverseSurface,
-            ),
-          ),
-        ),
       ),
     );
   }

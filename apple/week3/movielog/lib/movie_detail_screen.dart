@@ -4,7 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import 'data/movie_detail.dart';
 import 'theme/app_colors.dart';
+import 'widgets/app_header.dart';
+import 'widgets/pill_button.dart';
+import 'widgets/poster_image.dart';
 import 'widgets/rating_dialog.dart';
+import 'widgets/svg_icon_button.dart';
+import 'widgets/tag_chip.dart';
 
 /// W3-03 영화 상세 화면입니다.
 ///
@@ -80,18 +85,13 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   }
 }
 
-/// 상세 헤더 — 높이 64, padding 0 / 16
+/// 상세 헤더 — 공통 [AppHeader]의 가운데 정렬형
 /// 좌측 뒤로가기(32 x 32, left -8) · 가운데 Cinema Archive · 우측 공유(34 x 36)
 class _DetailHeader extends StatelessWidget implements PreferredSizeWidget {
   const _DetailHeader();
 
-  static const double _height = 64;
-
-  /// Figma 좌·우 아이콘 영역 너비 (32.02 + 293.96 + 32.02 = 358)
-  static const double _sideWidth = 32.02;
-
   @override
-  Size get preferredSize => const Size.fromHeight(_height);
+  Size get preferredSize => const Size.fromHeight(AppHeader.height);
 
   void _back(BuildContext context) {
     // 앱을 상세 화면에서 바로 열었다면 돌아갈 화면이 없으므로 영화 목록으로 이동
@@ -107,104 +107,33 @@ class _DetailHeader extends StatelessWidget implements PreferredSizeWidget {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return ColoredBox(
-      color: colors.surface,
-      child: SafeArea(
-        bottom: false,
-        child: Container(
-          height: _height,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              // 좌측 아이콘 — 버튼 32 x 32, padding 8, left -8, 아이콘 16 x 16 #6750A4
-              SizedBox(
-                width: _sideWidth,
-                height: 40,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Transform.translate(
-                    offset: const Offset(-8, 0),
-                    child: _HeaderIconButton(
-                      asset: 'assets/icons/detail_arrow_back.svg',
-                      iconSize: const Size(16, 16),
-                      color: colors.primary,
-                      tooltip: '뒤로가기',
-                      onPressed: () => _back(context),
-                    ),
-                  ),
-                ),
-              ),
-              // 텍스트 — Manrope 700 / 22 / 28, center, #6750A4
-              Expanded(
-                child: Text(
-                  'Cinema Archive',
-                  textAlign: TextAlign.center,
-                  style: textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: colors.primary,
-                  ),
-                ),
-              ),
-              // 우측 아이콘 — 버튼 34 x 36, padding 8, 아이콘 18 x 20 #494551
-              SizedBox(
-                width: _sideWidth,
-                height: 36,
-                child: OverflowBox(
-                  maxWidth: 34,
-                  child: _HeaderIconButton(
-                    asset: 'assets/icons/detail_share.svg',
-                    iconSize: const Size(18, 20),
-                    color: colors.onSurfaceVariant,
-                    tooltip: '공유',
-                    onPressed: () {}, // 공유 기능은 아직 연결하지 않습니다.
-                  ),
-                ),
-              ),
-            ],
-          ),
+    return AppHeader(
+      title: 'Cinema Archive',
+      centerTitle: true,
+      // Manrope 700 / 22 / 28, center, #6750A4
+      titleStyle: textTheme.titleLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: colors.primary,
+      ),
+      // 좌측 아이콘 — 버튼 32 x 32, left -8, 아이콘 16 x 16 #6750A4
+      leading: Transform.translate(
+        offset: const Offset(-8, 0),
+        child: SvgIconButton(
+          asset: 'assets/icons/detail_arrow_back.svg',
+          iconSize: const Size(16, 16),
+          color: colors.primary,
+          tooltip: '뒤로가기',
+          onPressed: () => _back(context),
         ),
       ),
-    );
-  }
-}
-
-/// 헤더 아이콘 버튼 — radius 9999, padding 8
-class _HeaderIconButton extends StatelessWidget {
-  const _HeaderIconButton({
-    required this.asset,
-    required this.iconSize,
-    required this.color,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final String asset;
-  final Size iconSize;
-  final Color color;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onPressed,
-      icon: SvgPicture.asset(
-        asset,
-        width: iconSize.width,
-        height: iconSize.height,
-        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      // 우측 아이콘 — 버튼 34 x 36, 아이콘 18 x 20 #494551
+      trailing: SvgIconButton(
+        asset: 'assets/icons/detail_share.svg',
+        iconSize: const Size(18, 20),
+        color: colors.onSurfaceVariant,
+        tooltip: '공유',
+        onPressed: () {}, // 공유 기능은 아직 연결하지 않습니다.
       ),
-      padding: const EdgeInsets.all(8),
-      constraints: BoxConstraints.tightFor(
-        width: iconSize.width + 16,
-        height: iconSize.height + 16,
-      ),
-      style: IconButton.styleFrom(
-        shape: const StadiumBorder(),
-        // 기본 48x48 터치 영역 여백을 없애 Figma 크기에 맞춤
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      tooltip: tooltip,
     );
   }
 }
@@ -219,13 +148,9 @@ class _HeroPoster extends StatelessWidget {
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: 2 / 3,
-      child: ColoredBox(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        child: Image.asset(
-          asset,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-        ),
+      child: PosterImage(
+        asset: asset,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
       ),
     );
   }
@@ -319,7 +244,21 @@ class _InfoSection extends StatelessWidget {
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: [for (final tag in detail.tags) _TagChip(label: tag)],
+              children: [
+                for (final tag in detail.tags)
+                  // 칩 하나 — 높이 28, padding 4 / 12, 배경 #E3E2DF
+                  // 글자 Manrope 500 / 14 / 20 / 0.1, #494551
+                  TagChip(
+                    label: tag,
+                    backgroundColor: colors.surfaceContainerHigh,
+                    foregroundColor: colors.onSurfaceVariant,
+                    textStyle: textTheme.titleMedium?.copyWith(
+                      fontSize: 14,
+                      height: 20 / 14,
+                      letterSpacing: 0.1,
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -360,37 +299,6 @@ class _StarRating extends StatelessWidget {
               colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// 장르 칩 — 높이 28, radius 9999, padding 4 / 12, 배경 #E3E2DF
-/// 글자 Manrope 500 / 14 / 20 / 0.1, #494551
-class _TagChip extends StatelessWidget {
-  const _TagChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: ShapeDecoration(
-        color: colors.surfaceContainerHigh,
-        shape: const StadiumBorder(),
-      ),
-      child: Text(
-        label,
-        style: textTheme.titleMedium?.copyWith(
-          fontSize: 14,
-          height: 20 / 14,
-          letterSpacing: 0.1,
-          color: colors.onSurfaceVariant,
-        ),
       ),
     );
   }
@@ -456,6 +364,10 @@ class _ActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
+    // 버튼 글자 — Manrope 500 / 14 / 20 / 0.1
+    final labelStyle = Theme.of(context).textTheme.titleMedium
+        ?.copyWith(fontSize: 14, height: 20 / 14, letterSpacing: 0.1);
+
     // Container는 테두리 두께(1)를 안쪽 여백에 더해 줘서 Figma 높이(81)와 맞습니다.
     return Container(
       decoration: BoxDecoration(
@@ -471,13 +383,18 @@ class _ActionBar extends StatelessWidget {
               // Figma 너비 176 : 174
               Expanded(
                 flex: 176,
-                child: _ActionButton(
+                // 테두리형 — border 1px #6750A4, 아이콘 14 x 18
+                child: PillButton(
                   label: '즐겨찾기',
-                  icon: bookmarked
-                      ? 'assets/icons/detail_bookmark_filled.svg'
+                  // 즐겨찾기 상태는 제공된 북마크 아이콘(W3-REQ)을 사용합니다.
+                  iconAsset: bookmarked
+                      ? 'assets/icons/bookmark_filled.png'
                       : 'assets/icons/detail_bookmark.svg',
                   iconSize: const Size(14, 18),
-                  filled: false,
+                  color: colors.primary,
+                  foregroundColor: colors.primary,
+                  outlined: true,
+                  textStyle: labelStyle,
                   selected: bookmarked,
                   onPressed: onBookmark,
                 ),
@@ -485,98 +402,25 @@ class _ActionBar extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 flex: 174,
-                child: _ActionButton(
+                // 채움형 — 배경 #6750A4, 아이콘 20 x 20 #FFFFFF, box-shadow 0 1 2 #0000000D
+                child: PillButton(
                   label: '평점 남기기',
-                  icon: 'assets/icons/detail_rate_review.svg',
+                  iconAsset: 'assets/icons/detail_rate_review.svg',
                   iconSize: const Size(20, 20),
-                  filled: true,
+                  color: colors.primary,
+                  foregroundColor: colors.onPrimary,
+                  textStyle: labelStyle,
+                  shadows: const [
+                    BoxShadow(
+                      offset: Offset(0, 1),
+                      blurRadius: 2,
+                      color: Color(0x0D000000),
+                    ),
+                  ],
                   onPressed: onRate,
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 액션 버튼 하나 — 높이 48, radius 9999, gap 4, 글자 Manrope 500 / 14 / 20 / 0.1
-/// 테두리형: border 1px #6750A4, 아이콘·글자 #6750A4
-/// 채움형: 배경 #6750A4, 아이콘·글자 #FFFFFF, box-shadow 0 1 2 #0000000D
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.iconSize,
-    required this.filled,
-    required this.onPressed,
-    this.selected,
-  });
-
-  final String label;
-  final String icon;
-  final Size iconSize;
-  final bool filled;
-  final VoidCallback onPressed;
-
-  /// 토글 버튼이면 현재 상태 (즐겨찾기)
-  final bool? selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final foreground = filled ? colors.onPrimary : colors.primary;
-
-    return Semantics(
-      toggled: selected,
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          shape: const StadiumBorder(),
-          shadows: filled
-              ? const [
-                  BoxShadow(
-                    offset: Offset(0, 1),
-                    blurRadius: 2,
-                    color: Color(0x0D000000),
-                  ),
-                ]
-              : null,
-        ),
-        child: Material(
-          color: filled ? colors.primary : Colors.transparent,
-          shape: StadiumBorder(
-            side: filled ? BorderSide.none : BorderSide(color: colors.primary),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onPressed,
-            child: SizedBox(
-              height: 48,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SvgPicture.asset(
-                    icon,
-                    width: iconSize.width,
-                    height: iconSize.height,
-                    colorFilter: ColorFilter.mode(foreground, BlendMode.srcIn),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: textTheme.titleMedium?.copyWith(
-                      fontSize: 14,
-                      height: 20 / 14,
-                      letterSpacing: 0.1,
-                      color: foreground,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ),
       ),

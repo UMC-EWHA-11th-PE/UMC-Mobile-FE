@@ -8,12 +8,15 @@ import 'package:go_router/go_router.dart';
 import 'data/movie.dart';
 import 'data/popular_movie.dart';
 import 'theme/app_colors.dart';
-import 'widgets/main_header.dart';
+import 'widgets/app_header.dart';
+import 'widgets/pill_button.dart';
+import 'widgets/poster_badge.dart';
+import 'widgets/poster_image.dart';
 
 /// W3-01 영화 홈 화면입니다.
 ///
 /// 화면은 의미 단위로 나뉩니다.
-/// - [MainHeader] MovieLog 로고, 검색 버튼
+/// - [AppHeader] MovieLog 로고, 검색 버튼
 /// - [_GreetingSection] 오늘은 어떤 영화를 볼까요?
 /// - [_FeaturedBanner] 추천 신작 배너
 /// - [_PopularSection] 인기 영화 가로 목록
@@ -30,7 +33,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const MainHeader(title: 'MovieLog'),
+      appBar: const AppHeader.tab(title: 'MovieLog'),
       body: ListView(
         // Figma padding-bottom 96 = 하단 네비(80)에 가려지는 영역 + 여백 16.
         // 여기서는 네비가 본문을 덮지 않으므로 여백 16만 둡니다.
@@ -108,72 +111,87 @@ class _FeaturedBanner extends StatelessWidget {
 
     return SizedBox(
       height: 534,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: ColoredBox(
-          // 이미지가 뜨기 전 보이는 배경
-          color: colors.surfaceContainerHighest,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // 뒤에 포스터 — 가로형 이미지를 가운데 기준으로 잘라 채웁니다.
-              Image.asset(backdropAsset, fit: BoxFit.cover),
-              const ColoredBox(color: AppColors.imageOverlay),
-              // 배너 하단 — 356 x 218, padding 24
-              Align(
-                alignment: Alignment.bottomLeft,
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // 칩 마진 — padding-bottom 8
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 8),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: _BannerChip(label: '추천 신작'),
+      // 뒤에 포스터 — 가로형 이미지를 가운데 기준으로 잘라 채웁니다.
+      child: PosterImage(
+        asset: backdropAsset,
+        borderRadius: 24,
+        overlays: [
+          const ColoredBox(color: AppColors.imageOverlay),
+          // 배너 하단 — 356 x 218, padding 24
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 칩 마진 — padding-bottom 8
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _BannerChip(label: '추천 신작'),
+                    ),
+                  ),
+                  // 제목 — padding-bottom 4, Manrope 500 / 28 / 36, #FFFFFF
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      movie.title,
+                      style: textTheme.titleMedium?.copyWith(
+                        fontSize: 28,
+                        height: 36 / 28,
+                        color: AppColors.onImage,
+                        shadows: _textShadows,
+                      ),
+                    ),
+                  ),
+                  // 하단 설명 — padding-bottom 16, opacity 0.9
+                  // Manrope 400 / 16 / 24, #F8F2FA
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Opacity(
+                      opacity: 0.9,
+                      child: Text(
+                        meta,
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: AppColors.onImageVariant,
+                          shadows: _textShadows,
                         ),
                       ),
-                      // 제목 — padding-bottom 4, Manrope 500 / 28 / 36, #FFFFFF
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          movie.title,
-                          style: textTheme.titleMedium?.copyWith(
-                            fontSize: 28,
-                            height: 36 / 28,
-                            color: AppColors.onImage,
-                            shadows: _textShadows,
-                          ),
-                        ),
+                    ),
+                  ),
+                  // 상세보기 — 308 x 48, gap 8, 배경 #4F378A, 아이콘 16.67 #FFFFFF
+                  // box-shadow 0 2 4 -2 #0000001A, 0 4 6 -1 #0000001A
+                  PillButton(
+                    label: '상세보기',
+                    iconAsset: 'assets/icons/banner_info_filled.svg',
+                    iconSize: const Size.square(50 / 3),
+                    color: colors.onPrimaryContainer,
+                    foregroundColor: AppColors.onImage,
+                    gap: 8,
+                    shadows: const [
+                      BoxShadow(
+                        offset: Offset(0, 2),
+                        blurRadius: 4,
+                        spreadRadius: -2,
+                        color: Color(0x1A000000),
                       ),
-                      // 하단 설명 — padding-bottom 16, opacity 0.9
-                      // Manrope 400 / 16 / 24, #F8F2FA
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Opacity(
-                          opacity: 0.9,
-                          child: Text(
-                            meta,
-                            style: textTheme.bodyLarge?.copyWith(
-                              color: AppColors.onImageVariant,
-                              shadows: _textShadows,
-                            ),
-                          ),
-                        ),
-                      ),
-                      _DetailButton(
-                        onPressed: () => context.push('/movies/${movie.id}'),
+                      BoxShadow(
+                        offset: Offset(0, 4),
+                        blurRadius: 6,
+                        spreadRadius: -1,
+                        color: Color(0x1A000000),
                       ),
                     ],
+                    onPressed: () => context.push('/movies/${movie.id}'),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -223,74 +241,6 @@ class _BannerChip extends StatelessWidget {
                 height: 16 / 12,
                 color: AppColors.onImage,
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 상세보기 버튼 — 308 x 48, radius 9999, padding 12 / 0, gap 8, 배경 #4F378A
-/// box-shadow 0 2 4 -2 #0000001A, 0 4 6 -1 #0000001A
-class _DetailButton extends StatelessWidget {
-  const _DetailButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return DecoratedBox(
-      decoration: const ShapeDecoration(
-        shape: StadiumBorder(),
-        shadows: [
-          BoxShadow(
-            offset: Offset(0, 2),
-            blurRadius: 4,
-            spreadRadius: -2,
-            color: Color(0x1A000000),
-          ),
-          BoxShadow(
-            offset: Offset(0, 4),
-            blurRadius: 6,
-            spreadRadius: -1,
-            color: Color(0x1A000000),
-          ),
-        ],
-      ),
-      child: Material(
-        color: colors.onPrimaryContainer,
-        shape: const StadiumBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: SizedBox(
-            height: 48,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // 아이콘 16.67 x 16.67, #FFFFFF
-                SvgPicture.asset(
-                  'assets/icons/banner_info_filled.svg',
-                  width: 50 / 3,
-                  height: 50 / 3,
-                  colorFilter: const ColorFilter.mode(
-                    AppColors.onImage,
-                    BlendMode.srcIn,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Manrope 500 / 16 / 24, #FFFFFF
-                Text(
-                  '상세보기',
-                  style: textTheme.titleMedium?.copyWith(
-                    color: AppColors.onImage,
-                  ),
-                ),
-              ],
             ),
           ),
         ),
@@ -413,39 +363,28 @@ class _PopularMovieCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // 마진 — padding-bottom 12
+          // 배경 그림자 — 140 x 200, radius 16, #E6E0E9, box-shadow 0 1 2 #0000000D
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            // 배경 그림자 — 140 x 200, radius 16, #E6E0E9, box-shadow 0 1 2 #0000000D
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: colors.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(
-                    offset: Offset(0, 1),
-                    blurRadius: 2,
-                    color: Color(0x0D000000),
+            child: SizedBox(
+              height: 200,
+              child: PosterImage(
+                asset: movie.posterAsset,
+                borderRadius: 16,
+                hasShadow: true,
+                overlays: [
+                  // 순위 칩 — 24 x 26, 배경 #00000099, border 1px #FFFFFF1A
+                  Positioned(
+                    left: 8,
+                    top: 8,
+                    child: PosterBadge(
+                      label: '$rank',
+                      backgroundColor: AppColors.rankChip,
+                      foregroundColor: AppColors.onImage,
+                      borderColor: AppColors.rankChipOutline,
+                    ),
                   ),
                 ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: SizedBox(
-                  height: 200,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.asset(
-                        movie.posterAsset,
-                        fit: BoxFit.cover,
-                        // 포스터가 없으면 배경색(#E6E0E9)만 보여줍니다.
-                        errorBuilder: (context, error, stackTrace) =>
-                            const SizedBox.shrink(),
-                      ),
-                      Positioned(left: 8, top: 8, child: _RankChip(rank: rank)),
-                    ],
-                  ),
-                ),
               ),
             ),
           ),
@@ -490,43 +429,6 @@ class _PopularMovieCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// 포스터 위 순위 칩 — 24 x 26, radius 6, padding 4 / 8
-/// 배경 #00000099, border 1px #FFFFFF1A, backdrop blur 4
-class _RankChip extends StatelessWidget {
-  const _RankChip({required this.rank});
-
-  final int rank;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final radius = BorderRadius.circular(6);
-
-    return ClipRRect(
-      borderRadius: radius,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.rankChip,
-            borderRadius: radius,
-            border: Border.all(color: AppColors.rankChipOutline),
-          ),
-          // Manrope 700 / 12 / 16
-          child: Text(
-            '$rank',
-            style: textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.onImage,
-            ),
-          ),
-        ),
       ),
     );
   }

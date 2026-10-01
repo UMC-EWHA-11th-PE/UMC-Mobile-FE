@@ -65,6 +65,12 @@ class AppColors {
   /// 영화 목록 포스터 위 별점 칩 글자
   static const Color onInverseSurface = Color(0xFFF5EFF7);
 
+  /// 마이페이지 장르 칩 배경, 통계 카드 테두리 (1주차)
+  static const Color primaryContainer = Color(0xFFE9DDFF);
+
+  /// 마이페이지 프로필 이미지 테두리 (1주차)
+  static const Color avatarBorder = Color(0xFFD0BCFF);
+
   /// 영화 상세 히어로 배경, 장르 칩 배경
   static const Color surfaceContainerHigh = Color(0xFFE3E2DF);
 

@@ -36,7 +36,7 @@ void main() {
 
     await tester.tap(find.text('마이'));
     await tester.pumpAndSettle();
-    expect(find.text('마이 화면'), findsOneWidget);
+    expect(find.text('무비러버'), findsOneWidget);
   });
 
   testWidgets('하단 네비게이션이 Figma 크기를 따른다', (WidgetTester tester) async {
@@ -419,5 +419,53 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Cinema Archive'), findsOneWidget);
     expect(find.text('(1,245)'), findsOneWidget);
+  });
+
+  testWidgets('마이 탭에 1주차 프로필 화면이 나온다', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(390, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('시작하기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('마이'));
+    await tester.pumpAndSettle();
+
+    // 헤더와 내용
+    expect(find.text('내 프로필'), findsOneWidget);
+    expect(find.byTooltip('내 정보'), findsOneWidget);
+    expect(find.text('무비러버'), findsOneWidget);
+    expect(find.text('프로필 수정'), findsOneWidget);
+    for (final text in ['342', '4.2', '58', '본 영화', '평점', '즐겨찾기']) {
+      expect(find.text(text), findsOneWidget);
+    }
+
+    // 프로필 사진 128 x 128, 헤더 아래 24
+    final avatar = find
+        .ancestor(of: find.byType(ClipOval), matching: find.byType(Container))
+        .first;
+    expect(tester.getSize(avatar), const Size(128, 128));
+    expect(tester.getTopLeft(avatar).dy, 64 + 24);
+
+    // 프로필 수정 버튼 높이 42
+    final editButton = find.ancestor(
+      of: find.text('프로필 수정'),
+      matching: find.byType(TextButton),
+    );
+    expect(tester.getSize(editButton).height, 42);
+
+    // 통계 카드 3개가 같은 너비 (358 - 8 x 2) / 3
+    final statCard = find
+        .ancestor(of: find.text('342'), matching: find.byType(Container))
+        .first;
+    expect(tester.getSize(statCard).width, closeTo((358 - 16) / 3, 0.01));
+
+    // 선호 장르 칩 높이 32
+    final chip = find
+        .ancestor(of: find.text('애니메이션'), matching: find.byType(Container))
+        .first;
+    expect(tester.getSize(chip).height, 32);
   });
 }
