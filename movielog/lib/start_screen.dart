@@ -30,7 +30,7 @@ class StartScreen extends StatelessWidget {
               Column(
                 children: [
                   SvgPicture.asset(
-                    'assets/logos/movielog_logo.png',
+                    'assets/logos/movielog_logo.svg',
                     width: 56,
                     height: 56,
                     semanticsLabel: 'MovieLog 로고',
