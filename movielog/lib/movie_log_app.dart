@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:movielog/screens/profile_screen.dart';
-import 'package:movielog/start_screen.dart';
+import 'package:movielog/screens/start_screen.dart';
 
 class MovieLogApp extends StatelessWidget {
   const MovieLogApp({super.key});

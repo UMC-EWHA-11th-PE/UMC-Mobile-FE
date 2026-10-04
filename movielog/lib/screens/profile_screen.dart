@@ -50,7 +50,9 @@ class ProfileHeader extends StatelessWidget {
       children: [
         const CircleAvatar(
           radius: 56,
-          backgroundImage: AssetImage('assets/images/profile_movielog.jpg'),
+          backgroundImage: AssetImage(
+            'assets/images/profile/profile_movielog.jpg',
+          ),
         ),
         const SizedBox(height: 16),
         Text('무비러버', style: AppTextStyles.titleLarge),

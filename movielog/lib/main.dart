@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
-
-import 'screens/sign_up_screen.dart';
+import 'router/app_router.dart';
+import 'theme/app_colors.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const MovieLogApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MovieLogApp extends StatelessWidget {
+  const MovieLogApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(home: Scaffold(body: SignUpScreen()));
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      title: 'MovieLog',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.violet),
+        scaffoldBackgroundColor: AppColors.warmWhite,
+      ),
+      routerConfig: AppRouter.router,
+    );
   }
 }

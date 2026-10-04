@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../theme/app_colors.dart';
 import '../utils/sign_up_validators.dart';
@@ -152,6 +153,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 formKey.currentState?.validate() ?? false;
                             if (!isValid) return;
                             FocusScope.of(context).unfocus();
+                            context.go('/home');
                           },
                         ),
 
