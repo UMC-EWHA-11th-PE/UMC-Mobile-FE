@@ -31,6 +31,12 @@ class MovieListViewModel extends ChangeNotifier {
   MovieListLoadStatus status = MovieListLoadStatus.idle;
   String? message;
 
+  /// 장르를 바꾸다 실패했지만 최근에 성공한 목록이 있어 그대로 보여주는 중 — 화면은 재시도 Dialog를 띄웁니다.
+  bool retryDialogVisible = false;
+
+  /// 화면에 보이는 [movies]를 불러온 장르 — 재시도 Dialog에서 취소하면 칩을 이 장르로 되돌립니다.
+  int? _loadedGenreId;
+
   /// Discover 요청 중에는 장르를 바꿀 수 없습니다.
   bool get isLoading =>
       status == MovieListLoadStatus.idle ||
@@ -90,6 +96,7 @@ class MovieListViewModel extends ChangeNotifier {
 
       if (_disposed || version != _requestVersion) return;
       movies = discovered;
+      _loadedGenreId = selectedGenreId;
       status = movies.isEmpty
           ? MovieListLoadStatus.empty
           : MovieListLoadStatus.success;
@@ -103,10 +110,12 @@ class MovieListViewModel extends ChangeNotifier {
   }
 
   /// 장르 선택 — with_genres로 page 1부터 다시 조회합니다. null이면 전체입니다.
+  ///
+  /// 실패했을 때 최근에 성공한 목록이 있으면 비우지 않고 유지한 채
+  /// [retryDialogVisible]을 켜 재시도 Dialog를 띄우게 합니다. (Challenge)
   Future<void> selectGenre(int? genreId) async {
     if (isLoading) return;
     selectedGenreId = genreId;
-    unawaited(_genrePreference.save(genreId));
     final version = ++_requestVersion;
     status = MovieListLoadStatus.loading;
     notifyListeners();
@@ -115,16 +124,37 @@ class MovieListViewModel extends ChangeNotifier {
       final result = await fetchUpToThirtyMovies(genreId: genreId);
       if (_disposed || version != _requestVersion) return;
       movies = result;
+      _loadedGenreId = genreId;
+      // 불러오기에 성공한 장르만 다음 진입 때 이어서 보여줍니다.
+      unawaited(_genrePreference.save(genreId));
       status = result.isEmpty
           ? MovieListLoadStatus.empty
           : MovieListLoadStatus.success;
     } on DioException {
       if (_disposed || version != _requestVersion) return;
-      status = MovieListLoadStatus.error;
-      message = '해당 장르 영화를 불러오지 못했어요.';
+      if (movies.isNotEmpty) {
+        status = MovieListLoadStatus.success;
+        retryDialogVisible = true;
+      } else {
+        status = MovieListLoadStatus.error;
+        message = '해당 장르 영화를 불러오지 못했어요.';
+      }
     }
 
     if (!_disposed && version == _requestVersion) notifyListeners();
+  }
+
+  /// 재시도 Dialog의 다시 시도 — 마지막으로 선택한 장르로 page 1부터 다시 30개를 불러옵니다.
+  Future<void> retryLastRequest() {
+    retryDialogVisible = false;
+    return selectGenre(selectedGenreId);
+  }
+
+  /// 재시도 Dialog의 취소 — 목록은 그대로 두고, 칩을 목록의 장르로 되돌립니다.
+  void cancelRetry() {
+    retryDialogVisible = false;
+    selectedGenreId = _loadedGenreId;
+    notifyListeners();
   }
 
   @override

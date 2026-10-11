@@ -19,7 +19,9 @@ class AppRouter {
   AppRouter._();
 
   static final router = GoRouter(
-    initialLocation: '/start',
+    // 자체 서버(회원가입 중복 확인) 연결 전까지는 시작·회원가입을 건너뛰고 홈에서 시작합니다.
+    // 서버를 연결하면 '/start'로 되돌립니다.
+    initialLocation: '/home',
     routes: [
       GoRoute(path: '/start', builder: (context, state) => const StartScreen()),
       GoRoute(

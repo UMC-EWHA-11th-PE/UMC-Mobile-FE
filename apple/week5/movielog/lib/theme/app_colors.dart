@@ -105,4 +105,13 @@ class AppColors {
 
   /// 포스터 위 순위 칩 테두리 (#FFFFFF1A)
   static const Color rankChipOutline = Color(0x1AFFFFFF);
+
+  /// 재시도 Dialog 아이콘 원 배경 (W5-01)
+  static const Color retryIconBackground = Color(0xFFF0EBF8);
+
+  /// 재시도 Dialog 안내 문구 (W5-01)
+  static const Color retryDialogBody = Color(0xFF655F6C);
+
+  /// 재시도 Dialog 취소 버튼 배경 (W5-01)
+  static const Color retryCancelButton = Color(0xFFF4F0FA);
 }

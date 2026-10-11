@@ -1,3 +1,5 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -180,6 +182,109 @@ void main() {
 
       expect(_discoverGenres(requests), [null, '878']);
       expect(find.text('우주의 끝에서'), findsOneWidget);
+    });
+  });
+
+  group('요청 실패 재시도 Dialog', () {
+    /// 전체 목록을 불러온 뒤 네트워크가 끊긴 상태(goOffline)에서 SF를 선택합니다.
+    Future<void> selectSfWhileOffline(
+      WidgetTester tester,
+      TmdbMovieService service,
+      VoidCallback goOffline,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_app(service));
+      await tester.pumpAndSettle();
+      expect(find.text('별빛 아래 우리'), findsOneWidget);
+
+      goOffline();
+      await tester.tap(find.text('SF'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('장르 요청이 실패하면 기존 목록을 유지한 채 Dialog를 띄운다', (tester) async {
+      var failing = false;
+      await selectSfWhileOffline(
+        tester,
+        fakeTmdbService(fail: () => failing),
+        () => failing = true,
+      );
+
+      expect(find.text('영화를 불러오지 못했어요'), findsOneWidget);
+      expect(find.text('네트워크 상태를 확인하고\n다시 시도해 주세요.'), findsOneWidget);
+      // 최근 성공한 전체 목록이 그대로 남아 있음
+      expect(find.text('별빛 아래 우리'), findsOneWidget);
+
+      // W5-01: 326 x 282, 버튼 126 x 52
+      final dialogBody = find
+          .descendant(of: find.byType(Dialog), matching: find.byType(Material))
+          .first;
+      expect(tester.getSize(dialogBody), const Size(326, 282));
+      final retryButton = find.ancestor(
+        of: find.text('다시 시도'),
+        matching: find.byType(FilledButton),
+      );
+      expect(tester.getSize(retryButton), const Size(126, 52));
+    });
+
+    testWidgets('다시 시도를 누르면 같은 장르로 page 1부터 다시 요청한다', (tester) async {
+      var failing = false;
+      final requests = <Uri>[];
+      await selectSfWhileOffline(
+        tester,
+        fakeTmdbService(requests: requests, fail: () => failing),
+        () => failing = true,
+      );
+
+      // 네트워크를 다시 켜고 재시도
+      failing = false;
+      requests.clear();
+      await tester.tap(find.text('다시 시도'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Dialog), findsNothing);
+      expect(_discoverGenres(requests), ['878']);
+      expect(requests.first.queryParameters['page'], '1');
+      expect(find.text('우주의 끝에서'), findsOneWidget);
+      expect(find.text('별빛 아래 우리'), findsNothing);
+    });
+
+    testWidgets('취소하면 목록과 장르 선택을 실패 전으로 유지하고 다시 요청하지 않는다', (tester) async {
+      var failing = false;
+      final requests = <Uri>[];
+      await selectSfWhileOffline(
+        tester,
+        fakeTmdbService(requests: requests, fail: () => failing),
+        () => failing = true,
+      );
+      requests.clear();
+
+      await tester.tap(find.text('취소'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Dialog), findsNothing);
+      expect(requests, isEmpty);
+      expect(find.text('별빛 아래 우리'), findsOneWidget);
+      // 칩도 목록과 같은 "전체"로 되돌아감
+      final allChip = tester.getSemantics(
+        find
+            .ancestor(of: find.text('전체'), matching: find.byType(Semantics))
+            .first,
+      );
+      expect(allChip.flagsCollection.isSelected, Tristate.isTrue);
+      // 실패한 장르는 저장하지 않음
+      expect(await GenrePreference().read(), isNull);
+    });
+
+    testWidgets('보여줄 목록이 없을 때 실패하면 Dialog 대신 오류 화면을 보여준다', (tester) async {
+      await tester.pumpWidget(_app(fakeTmdbService(fail: () => true)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Dialog), findsNothing);
+      expect(find.text('영화를 불러오지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
     });
   });
 

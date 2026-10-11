@@ -7,6 +7,7 @@ import '../view_models/movie_list_view_model.dart';
 import '../widgets/app_header.dart';
 import '../widgets/movie_grid.dart';
 import '../widgets/movie_list_states.dart';
+import '../widgets/movie_retry_dialog.dart';
 
 /// W3-02 영화 목록 화면입니다.
 ///
@@ -16,8 +17,59 @@ import '../widgets/movie_list_states.dart';
 /// - 실패: [MovieListError] (다시 시도)
 /// - 빈 목록: [MovieListEmpty]
 /// - 성공: [MovieGrid] — TMDB Discover 최대 30개
-class MovieListScreen extends StatelessWidget {
+///
+/// 장르를 바꾸다 실패했는데 보여주던 목록이 있으면, 목록을 유지한 채 [MovieRetryDialog]를 띄웁니다.
+class MovieListScreen extends StatefulWidget {
   const MovieListScreen({super.key});
+
+  @override
+  State<MovieListScreen> createState() => _MovieListScreenState();
+}
+
+class _MovieListScreenState extends State<MovieListScreen> {
+  MovieListViewModel? _viewModel;
+  bool _retryDialogOpen = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Dialog는 화면을 다시 그리는 일이 아니라 한 번 띄우는 일이라 build 대신 listener에서 처리합니다.
+    final viewModel = context.read<MovieListViewModel>();
+    if (viewModel != _viewModel) {
+      _viewModel?.removeListener(_showRetryDialogIfNeeded);
+      _viewModel = viewModel..addListener(_showRetryDialogIfNeeded);
+    }
+  }
+
+  @override
+  void dispose() {
+    _viewModel?.removeListener(_showRetryDialogIfNeeded);
+    super.dispose();
+  }
+
+  Future<void> _showRetryDialogIfNeeded() async {
+    final viewModel = _viewModel;
+    if (viewModel == null ||
+        !viewModel.retryDialogVisible ||
+        _retryDialogOpen) {
+      return;
+    }
+
+    _retryDialogOpen = true;
+    final retry = await showDialog<bool>(
+      context: context,
+      builder: (context) => const MovieRetryDialog(),
+    );
+    _retryDialogOpen = false;
+    if (!mounted) return;
+
+    // 바깥을 눌러 닫으면(null) 취소와 같습니다.
+    if (retry ?? false) {
+      viewModel.retryLastRequest();
+    } else {
+      viewModel.cancelRetry();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
