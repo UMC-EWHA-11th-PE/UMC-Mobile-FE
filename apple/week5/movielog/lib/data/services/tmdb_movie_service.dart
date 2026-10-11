@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 
 import '../models/tmdb_genre_dto.dart';
-import '../models/tmdb_movie_dto.dart';
 import '../models/tmdb_movie_page.dart';
 
 /// TMDB API를 호출하고 응답 JSON을 DTO로 바꿉니다.
@@ -37,7 +36,8 @@ class TmdbMovieService {
         'sort_by': 'popularity.desc',
         'include_adult': false,
         'include_video': false,
-        if (genreId != null) 'with_genres': genreId,
+        // ?genreId: null이면 이 항목을 Map에 넣지 않습니다. (if (genreId != null)과 같음)
+        'with_genres': ?genreId,
       },
     );
     return TmdbMoviePageDto.fromJson(response.data as Map<String, dynamic>);
