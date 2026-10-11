@@ -11,14 +11,19 @@ import '../theme/app_shadows.dart';
 class PosterImage extends StatelessWidget {
   const PosterImage({
     super.key,
-    required this.asset,
+    this.asset,
+    this.image,
     this.borderRadius = 0,
     this.backgroundColor,
     this.hasShadow = false,
     this.overlays = const [],
-  });
+  }) : assert(asset != null || image != null, 'asset 또는 image가 필요합니다.');
 
-  final String asset;
+  /// 에셋 포스터 경로 — [image]가 있으면 사용하지 않습니다.
+  final String? asset;
+
+  /// 에셋 대신 보여줄 이미지 (예: TMDB 네트워크 포스터)
+  final Widget? image;
   final double borderRadius;
 
   /// null이면 #E6E0E9 (surfaceContainerHighest)
@@ -47,12 +52,13 @@ class PosterImage extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset(
-              asset,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const SizedBox.shrink(),
-            ),
+            image ??
+                Image.asset(
+                  asset!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
             ...overlays,
           ],
         ),

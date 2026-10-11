@@ -10,10 +10,12 @@ import 'package:movielog/router/app_router.dart';
 import 'package:movielog/widgets/movie_card.dart';
 
 import 'fake_api.dart';
+import 'fake_tmdb.dart';
 
 void main() {
   setUp(() {
-    // 영화 목록·회원가입이 서버를 호출하므로 가짜 서버로 대체
+    // 회원가입이 서버를 호출하므로 가짜 서버로 대체
+    // (영화 목록은 MovieLogApp에 fakeTmdbService를 넣어 TMDB 대신 사용)
     ApiConfig.client = fakeApiClient();
     // AppRouter.router는 static이라 테스트마다 시작 화면으로 되돌림
     AppRouter.router.go('/start');
@@ -29,7 +31,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
     await tester.pumpAndSettle();
 
     // 시작 화면 (1주차 W1-00)
@@ -82,7 +84,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
     await tester.pumpAndSettle();
     AppRouter.router.go('/home');
     await tester.pumpAndSettle();
@@ -118,7 +120,7 @@ void main() {
         .last
         .matchedLocation;
 
-    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
     await tester.pumpAndSettle();
 
     // 홈 배너 → 상세 (장르·러닝타임도 상세와 같은 Mock)
@@ -141,7 +143,7 @@ void main() {
   });
 
   testWidgets('하단 탭으로 홈/영화/마이를 이동한다', (WidgetTester tester) async {
-    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
     await tester.pumpAndSettle();
 
     AppRouter.router.go('/home');
@@ -161,7 +163,7 @@ void main() {
   });
 
   testWidgets('하단 네비게이션이 Figma 크기를 따른다', (WidgetTester tester) async {
-    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
     await tester.pumpAndSettle();
     AppRouter.router.go('/home');
     await tester.pumpAndSettle();
@@ -183,7 +185,7 @@ void main() {
   });
 
   testWidgets('홈 헤더가 Figma 크기를 따른다', (WidgetTester tester) async {
-    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
     await tester.pumpAndSettle();
     AppRouter.router.go('/home');
     await tester.pumpAndSettle();
@@ -203,7 +205,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
     await tester.pumpAndSettle();
     AppRouter.router.go('/home');
     await tester.pumpAndSettle();
@@ -253,7 +255,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
     await tester.pumpAndSettle();
     AppRouter.router.go('/home');
     await tester.pumpAndSettle();
@@ -310,7 +312,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
     await tester.pumpAndSettle();
     AppRouter.router.go('/home');
     await tester.pumpAndSettle();
@@ -327,7 +329,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(const MovieLogApp());
+      await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
       await tester.pumpAndSettle();
       AppRouter.router.go('/home');
       await tester.pumpAndSettle();
@@ -405,7 +407,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(const MovieLogApp());
+      await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
       await tester.pumpAndSettle();
       AppRouter.router.go('/home');
       await tester.pumpAndSettle();
@@ -537,7 +539,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
     await tester.pumpAndSettle();
     AppRouter.router.go('/home');
     await tester.pumpAndSettle();
@@ -553,7 +555,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const MovieLogApp());
+    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
     await tester.pumpAndSettle();
     AppRouter.router.go('/home');
     await tester.pumpAndSettle();

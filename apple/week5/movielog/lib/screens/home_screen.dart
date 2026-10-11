@@ -334,7 +334,13 @@ class _PopularMovieCard extends StatelessWidget {
     return SizedBox(
       width: 140,
       child: MovieCard(
-        movie: movie,
+        movieId: movie.id,
+        title: movie.title,
+        poster: Image.asset(
+          movie.posterAsset,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+        ),
         posterAspectRatio: 140 / 200,
         posterRadius: 16,
         // 순위 칩 — 24 x 26, 배경 #00000099, border 1px #FFFFFF1A

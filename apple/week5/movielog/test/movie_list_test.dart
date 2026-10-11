@@ -1,23 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
-import 'package:movielog/data/services/fake_movie_service.dart';
 import 'package:movielog/data/local/genre_preference.dart';
 import 'package:movielog/data/local/secure_storage_cleanup.dart';
+import 'package:movielog/data/services/fake_movie_service.dart';
+import 'package:movielog/data/services/tmdb_movie_service.dart';
 import 'package:movielog/screens/movie_list_screen.dart';
 import 'package:movielog/theme/app_theme.dart';
+import 'package:movielog/view_models/movie_list_view_model.dart';
 
-Widget _app(MovieLoadMode mode, {Key? key}) => MaterialApp(
+import 'fake_tmdb.dart';
+
+/// 라우터와 같은 방식으로 화면마다 ViewModel을 만들어 붙입니다.
+Widget _app(TmdbMovieService service, {Key? key}) => MaterialApp(
   theme: AppTheme.light,
-  home: MovieListScreen(
+  home: ChangeNotifierProvider<MovieListViewModel>(
     key: key,
-    loadMovies: () => const FakeMovieService().fetchMovies(mode: mode),
+    create: (_) => MovieListViewModel(service)..loadInitial(),
+    child: const MovieListScreen(),
   ),
 );
+
+/// Discover 요청의 with_genres 값 (없으면 null)
+List<String?> _discoverGenres(List<Uri> requests) => [
+  for (final uri in requests)
+    if (uri.path.endsWith('/discover/movie'))
+      uri.queryParameters['with_genres'],
+];
 
 void main() {
   setUp(() {
@@ -39,80 +53,212 @@ void main() {
   });
 
   group('영화 목록 상태', () {
-    testWidgets('불러오는 동안 로딩을 보여주고, 완료되면 영화를 보여준다', (tester) async {
+    testWidgets('불러오는 동안 로딩을 보여주고, 완료되면 영화와 장르 칩을 보여준다', (tester) async {
       tester.view.physicalSize = const Size(390, 1200);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(_app(MovieLoadMode.success));
+      await tester.pumpWidget(
+        _app(fakeTmdbService(delay: const Duration(milliseconds: 100))),
+      );
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.text('별빛 아래 우리'), findsNothing);
 
-      await tester.pump(const Duration(seconds: 1));
       await tester.pumpAndSettle();
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('별빛 아래 우리'), findsOneWidget);
+      // 장르 칩은 Genre API 결과 — 맨 앞은 전체
+      expect(find.text('전체'), findsOneWidget);
+      expect(find.text('드라마'), findsOneWidget);
+    });
+
+    testWidgets('포스터가 없는 영화는 placeholder를 보여준다', (tester) async {
+      await tester.pumpWidget(_app(fakeTmdbService()));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byIcon(Icons.image_not_supported_outlined),
+        findsAtLeastNWidgets(1),
+      );
     });
 
     testWidgets('빈 목록이면 안내 문구를 보여준다', (tester) async {
-      await tester.pumpWidget(_app(MovieLoadMode.empty));
+      await tester.pumpWidget(_app(fakeTmdbService(results: const [])));
       await tester.pumpAndSettle();
 
       expect(find.text('조건에 맞는 영화가 없습니다.'), findsOneWidget);
-      expect(find.text('전체'), findsNothing);
     });
 
     testWidgets('실패하면 안내 문구와 다시 시도 버튼을 보여주고, 누르면 다시 불러온다', (tester) async {
-      await tester.pumpWidget(_app(MovieLoadMode.failure));
+      var failing = true;
+      await tester.pumpWidget(
+        _app(
+          fakeTmdbService(
+            fail: () => failing,
+            delay: const Duration(milliseconds: 100),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
-      expect(find.text('영화를 불러오지 못했습니다.'), findsOneWidget);
+      expect(find.text('영화를 불러오지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
 
+      failing = false;
       await tester.tap(find.text('다시 시도'));
       await tester.pump();
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.text('다시 시도'), findsNothing);
 
       await tester.pumpAndSettle();
-      expect(find.text('다시 시도'), findsOneWidget);
+      expect(find.text('별빛 아래 우리'), findsOneWidget);
     });
 
     testWidgets('불러오는 중에 화면이 사라져도 오류가 나지 않는다', (tester) async {
-      await tester.pumpWidget(_app(MovieLoadMode.success));
+      await tester.pumpWidget(
+        _app(fakeTmdbService(delay: const Duration(milliseconds: 100))),
+      );
       await tester.pumpWidget(const SizedBox());
-      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(tester.takeException(), isNull);
     });
   });
 
-  group('마지막 선택 장르', () {
-    testWidgets('선택한 장르를 저장하고, 다시 들어오면 그 장르로 시작한다', (tester) async {
-      tester.view.physicalSize = const Size(390, 1200);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
+  group('장르 필터', () {
+    testWidgets('장르를 고르면 with_genres로 다시 요청하고, 전체는 with_genres 없이 요청한다', (
+      tester,
+    ) async {
+      final requests = <Uri>[];
+      await tester.pumpWidget(_app(fakeTmdbService(requests: requests)));
+      await tester.pumpAndSettle();
 
-      await tester.pumpWidget(_app(MovieLoadMode.success, key: UniqueKey()));
+      await tester.tap(find.text('SF'));
+      await tester.pumpAndSettle();
+      expect(find.text('우주의 끝에서'), findsOneWidget);
+      expect(find.text('별빛 아래 우리'), findsNothing);
+
+      await tester.tap(find.text('전체'));
+      await tester.pumpAndSettle();
+      expect(find.text('별빛 아래 우리'), findsOneWidget);
+
+      expect(_discoverGenres(requests), [null, '878', null]);
+    });
+
+    testWidgets('선택된 장르를 다시 누르면 선택이 풀려 전체를 요청한다', (tester) async {
+      final requests = <Uri>[];
+      await tester.pumpWidget(_app(fakeTmdbService(requests: requests)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('SF'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('SF'));
       await tester.pumpAndSettle();
 
-      expect(await GenrePreference().read(), 'SF');
+      expect(_discoverGenres(requests), [null, '878', null]);
+      expect(find.text('별빛 아래 우리'), findsOneWidget);
+    });
+
+    testWidgets('Discover 요청 중에는 장르를 바꿀 수 없다', (tester) async {
+      final requests = <Uri>[];
+      await tester.pumpWidget(
+        _app(
+          fakeTmdbService(
+            requests: requests,
+            delay: const Duration(milliseconds: 100),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('SF'));
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      // 로딩 중 다른 장르를 눌러도 요청하지 않음
+      await tester.tap(find.text('드라마'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(_discoverGenres(requests), [null, '878']);
+      expect(find.text('우주의 끝에서'), findsOneWidget);
+    });
+  });
+
+  group('최대 30개', () {
+    List<Map<String, Object?>> manyMovies(int count) => [
+      for (var id = 1; id <= count; id++)
+        {'id': id, 'title': '영화 $id', 'genre_ids': <int>[]},
+    ];
+
+    test('30개가 차면 다음 페이지를 요청하지 않는다', () async {
+      final requests = <Uri>[];
+      final viewModel = MovieListViewModel(
+        fakeTmdbService(results: manyMovies(45), requests: requests),
+      );
+
+      final result = await viewModel.fetchUpToThirtyMovies();
+
+      expect(result.map((movie) => movie.id), [
+        for (var i = 1; i <= 30; i++) i,
+      ]);
+      expect(
+        [for (final uri in requests) uri.queryParameters['page']],
+        ['1', '2'],
+      );
+    });
+
+    test('페이지 사이에 중복된 영화는 하나만 남긴다', () async {
+      // 1페이지 1~20, 2페이지 15~34 (15~20 중복)
+      final overlapped = [...manyMovies(20), ...manyMovies(34).skip(14)];
+      final viewModel = MovieListViewModel(
+        fakeTmdbService(results: overlapped),
+      );
+
+      final result = await viewModel.fetchUpToThirtyMovies();
+
+      expect(result.map((movie) => movie.id).toSet().length, result.length);
+      expect(result.length, 30);
+    });
+
+    test('결과가 30개보다 적으면 있는 만큼만 돌려준다', () async {
+      final viewModel = MovieListViewModel(
+        fakeTmdbService(results: manyMovies(12)),
+      );
+
+      expect(await viewModel.fetchUpToThirtyMovies(), hasLength(12));
+    });
+  });
+
+  group('마지막 선택 장르', () {
+    testWidgets('선택한 장르 id를 저장하고, 다시 들어오면 그 장르로 요청한다', (tester) async {
+      final requests = <Uri>[];
+      await tester.pumpWidget(
+        _app(fakeTmdbService(requests: requests), key: UniqueKey()),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('SF'));
+      await tester.pumpAndSettle();
+
+      expect(await GenrePreference().read(), 878);
 
       // 새 화면으로 다시 들어오기
-      await tester.pumpWidget(_app(MovieLoadMode.success, key: UniqueKey()));
+      requests.clear();
+      await tester.pumpWidget(
+        _app(fakeTmdbService(requests: requests), key: UniqueKey()),
+      );
       await tester.pumpAndSettle();
+      expect(_discoverGenres(requests), ['878']);
       expect(find.text('우주의 끝에서'), findsOneWidget);
       expect(find.text('별빛 아래 우리'), findsNothing);
     });
 
-    test('저장된 값이 없으면 전체를 돌려준다', () async {
+    test('저장된 값이 없거나 전체를 고르면 null을 돌려준다', () async {
       final preference = GenrePreference();
-      expect(await preference.read(), '전체');
+      expect(await preference.read(), isNull);
 
-      await preference.save('드라마');
-      await preference.clear();
-      expect(await preference.read(), '전체');
+      await preference.save(18);
+      expect(await preference.read(), 18);
+      await preference.save(null);
+      expect(await preference.read(), isNull);
     });
   });
 
