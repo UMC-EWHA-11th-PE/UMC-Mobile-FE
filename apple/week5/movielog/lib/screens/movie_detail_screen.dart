@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import '../data/mock/movie_mock_data.dart';
 import '../models/movie_detail.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_shadows.dart';
@@ -13,8 +13,13 @@ import '../widgets/poster_image.dart';
 import '../widgets/rating_dialog.dart';
 import '../widgets/svg_icon_button.dart';
 import '../widgets/tag_chip.dart';
+import '../widgets/tmdb_poster_image.dart';
+import '../view_models/movie_detail_view_model.dart';
 
 /// W3-03 영화 상세 화면입니다.
+///
+/// 5주차부터 [movieId](TMDB id)로 [MovieDetailViewModel]이 불러온 상세를 보여줍니다.
+/// [detail]을 직접 받으면(홈 추천 신작 Mock) 그대로 보여줍니다.
 ///
 /// 화면은 의미 단위로 나뉩니다.
 /// - [_DetailHeader] 뒤로가기, Cinema Archive, 공유
@@ -23,9 +28,13 @@ import '../widgets/tag_chip.dart';
 /// - [_SynopsisSection] 시놉시스
 /// - [_ActionBar] 하단 고정 즐겨찾기·평점 남기기 버튼
 class MovieDetailScreen extends StatefulWidget {
-  const MovieDetailScreen({super.key, required this.movieId});
+  const MovieDetailScreen({super.key, required this.movieId, this.detail});
 
+  /// TMDB 영화 id — 평점 Dialog에 그대로 전달합니다.
   final int? movieId;
+
+  /// 이미 가진 상세 정보 — null이면 [MovieDetailViewModel]의 상태를 구독합니다.
+  final MovieDetail? detail;
 
   @override
   State<MovieDetailScreen> createState() => _MovieDetailScreenState();
@@ -51,7 +60,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   Future<void> _rate() async {
     final rating = await showDialog<double>(
       context: context,
-      builder: (context) => const RatingDialog(),
+      builder: (context) => RatingDialog(movieId: widget.movieId),
     );
     // 바깥을 눌러 닫았거나 별을 고르지 않고 확인을 누른 경우
     if (!mounted || rating == null || rating < 0.5) return;
@@ -60,23 +69,45 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final detail = findMovieDetailById(widget.movieId);
+    final detail = widget.detail;
+    if (detail != null) return _buildDetail(detail);
 
-    if (detail == null) {
-      return const Scaffold(
-        appBar: _DetailHeader(),
-        body: Center(child: Text('영화를 찾을 수 없습니다.')),
-      );
-    }
+    return Consumer<MovieDetailViewModel>(
+      builder: (context, viewModel, child) => switch (viewModel.status) {
+        MovieDetailLoadStatus.idle ||
+        MovieDetailLoadStatus.loading => const Scaffold(
+          appBar: _DetailHeader(),
+          body: Center(child: CircularProgressIndicator()),
+        ),
+        MovieDetailLoadStatus.error => Scaffold(
+          appBar: const _DetailHeader(),
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(viewModel.message ?? '영화 정보를 불러오지 못했어요.'),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => context.read<MovieDetailViewModel>().load(),
+                  child: const Text('다시 시도'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        MovieDetailLoadStatus.success => _buildDetail(viewModel.detail!),
+      },
+    );
+  }
 
+  Widget _buildDetail(MovieDetail detail) {
     return Scaffold(
       appBar: const _DetailHeader(),
       body: ListView(
         children: [
-          _HeroPoster(asset: detail.heroAsset),
+          _HeroPoster(detail: detail),
           _InfoSection(detail: detail),
-          if (detail.synopsis.isNotEmpty)
-            _SynopsisSection(paragraphs: detail.synopsis),
+          _SynopsisSection(paragraphs: detail.synopsis),
         ],
       ),
       bottomNavigationBar: _ActionBar(
@@ -142,19 +173,31 @@ class _DetailHeader extends StatelessWidget implements PreferredSizeWidget {
 }
 
 /// 히어로 섹션 — 390 x 585 (2:3), 배경 #E3E2DF
+/// Mock 영화는 에셋 이미지, TMDB 영화는 poster_path 이미지를 보여줍니다.
 class _HeroPoster extends StatelessWidget {
-  const _HeroPoster({required this.asset});
+  const _HeroPoster({required this.detail});
 
-  final String asset;
+  final MovieDetail detail;
 
   @override
   Widget build(BuildContext context) {
+    final heroAsset = detail.heroAsset;
+    final backgroundColor = Theme.of(context).colorScheme.surfaceContainerHigh;
+
     return AspectRatio(
       aspectRatio: 2 / 3,
-      child: PosterImage(
-        asset: asset,
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
-      ),
+      child: heroAsset != null
+          ? PosterImage(asset: heroAsset, backgroundColor: backgroundColor)
+          : PosterImage(
+              // poster_path가 없으면 TmdbPosterImage가 placeholder를 보여줍니다.
+              image: TmdbPosterImage(
+                posterPath: detail.posterPath,
+                // 크기는 AspectRatio(2:3)가 정하므로 가득 채웁니다.
+                width: double.infinity,
+                height: double.infinity,
+              ),
+              backgroundColor: backgroundColor,
+            ),
     );
   }
 }
@@ -165,10 +208,10 @@ class _InfoSection extends StatelessWidget {
 
   final MovieDetail detail;
 
-  /// 2024 • 로맨스/드라마 • 124분
+  /// 2024 • 로맨스/드라마 • 124분 — 연도·장르가 없으면 빼고 표시합니다.
   String get _meta => [
-    '${detail.year}',
-    detail.genres.join('/'),
+    if (detail.year != null) '${detail.year}',
+    if (detail.genres.isNotEmpty) detail.genres.join('/'),
     if (detail.runtimeMinutes != null) '${detail.runtimeMinutes}분',
   ].join(' • ');
 
@@ -295,6 +338,12 @@ class _SynopsisSection extends StatelessWidget {
             style: textTheme.titleLarge?.copyWith(color: AppColors.detailText),
           ),
           const SizedBox(height: 8),
+          // 줄거리(overview)가 없으면 안내 문구를 가운데에 표시
+          if (paragraphs.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: Text('줄거리 정보가 없어요.', style: bodyStyle)),
+            ),
           for (var i = 0; i < paragraphs.length; i++) ...[
             if (i > 0) const SizedBox(height: 26),
             Text(paragraphs[i], style: bodyStyle),

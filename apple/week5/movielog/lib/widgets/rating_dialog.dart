@@ -11,7 +11,10 @@ import 'movie_rating_input.dart';
 /// - W3-06 (Challenge): 342 x 260 — 별점을 고르면 '다시 선택하기'가 나타나 0점으로 되돌림
 /// - 별을 고르기 전에는 확인 버튼이 비활성
 class RatingDialog extends StatefulWidget {
-  const RatingDialog({super.key});
+  const RatingDialog({super.key, this.movieId});
+
+  /// 평점을 남길 영화의 TMDB id — 평점 저장 API의 movieId로 그대로 보냅니다.
+  final int? movieId;
 
   @override
   State<RatingDialog> createState() => _RatingDialogState();

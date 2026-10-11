@@ -44,6 +44,11 @@ void main() {
     expect(find.text('마션 레스큐'), findsOneWidget);
     // TMDB 평점(10점 만점)을 그대로 표시
     expect(find.text('9.6'), findsOneWidget);
+    // 포스터가 없는 영화는 placeholder
+    expect(
+      find.byIcon(Icons.image_not_supported_outlined),
+      findsAtLeastNWidgets(1),
+    );
   });
 
   testWidgets('Popular 결과에서 앞의 5개만 보여준다', (tester) async {

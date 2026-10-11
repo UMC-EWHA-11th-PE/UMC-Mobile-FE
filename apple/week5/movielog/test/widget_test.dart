@@ -307,6 +307,39 @@ void main() {
     expect(find.text('9.6'), findsOneWidget);
   });
 
+  testWidgets('홈이 다시 그려지거나 상세에서 돌아와도 Popular를 다시 요청하지 않는다', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final requests = <Uri>[];
+    int popularCount() =>
+        requests.where((uri) => uri.path.endsWith('/movie/popular')).length;
+
+    await tester.pumpWidget(
+      MovieLogApp(tmdbMovieService: fakeTmdbService(requests: requests)),
+    );
+    await tester.pumpAndSettle();
+    AppRouter.router.go('/home');
+    await tester.pumpAndSettle();
+    expect(popularCount(), 1);
+
+    // 화면 크기가 바뀌어 홈 전체가 다시 build 되어도 요청하지 않음
+    tester.view.physicalSize = const Size(400, 1200);
+    await tester.pumpAndSettle();
+    expect(popularCount(), 1);
+
+    // 인기 영화 카드 → 상세 → 뒤로가기 (홈은 그대로 유지)
+    await tester.tap(find.text('마션 레스큐'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('뒤로가기'));
+    await tester.pumpAndSettle();
+    expect(popularCount(), 1);
+    expect(find.text('마션 레스큐'), findsOneWidget);
+  });
+
   testWidgets('전체보기를 누르면 영화 탭으로 이동한다', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(388, 1200);
     tester.view.devicePixelRatio = 1;
@@ -411,10 +444,8 @@ void main() {
       await tester.pumpAndSettle();
       AppRouter.router.go('/home');
       await tester.pumpAndSettle();
-      await tester.tap(find.text('영화'));
-      await tester.pumpAndSettle();
-      // 영화 목록에서 첫 번째 카드를 눌러 상세로 이동
-      await tester.tap(find.text('별빛 아래 우리'));
+      // 홈 추천 신작(Mock 상세, Figma W3-03 내용)으로 상세 이동
+      await tester.tap(find.text('상세보기'));
       await tester.pumpAndSettle();
     }
 
@@ -471,8 +502,20 @@ void main() {
       );
     });
 
-    testWidgets('뒤로가기를 누르면 영화 목록으로 돌아간다', (WidgetTester tester) async {
-      await openDetail(tester);
+    testWidgets('목록에서 연 상세에서 뒤로가기를 누르면 영화 목록으로 돌아간다', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+      await tester.pumpAndSettle();
+      AppRouter.router.go('/movies');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('별빛 아래 우리'));
+      await tester.pumpAndSettle();
+      expect(find.text('Cinema Archive'), findsOneWidget);
 
       await tester.tap(find.byTooltip('뒤로가기'));
       await tester.pumpAndSettle();

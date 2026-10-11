@@ -52,7 +52,7 @@ class HomeScreen extends StatelessWidget {
               child: _FeaturedBanner(
                 movie: featured,
                 // 배너 배경 — 상세 히어로와 같은 가로형 이미지
-                backdropAsset: featuredDetail.heroAsset,
+                backdropAsset: featuredDetail.heroAsset ?? featured.posterAsset,
                 // 로맨스 · 드라마 · 124분
                 meta: [
                   ...featuredDetail.genres,
@@ -175,7 +175,11 @@ class _FeaturedBanner extends StatelessWidget {
                     foregroundColor: AppColors.onImage,
                     gap: 8,
                     shadows: AppShadows.raisedButton,
-                    onPressed: () => context.push('/movies/${movie.id}'),
+                    // 추천 신작은 Mock 영화라 상세 정보를 함께 넘겨 TMDB를 조회하지 않습니다.
+                    onPressed: () => context.push(
+                      '/movies/${movie.id}',
+                      extra: findMovieDetailById(movie.id),
+                    ),
                   ),
                 ],
               ),

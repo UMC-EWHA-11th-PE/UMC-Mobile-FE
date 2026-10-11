@@ -45,6 +45,7 @@ final fakeTmdbPopularMovies = _toTmdbJson(popularMovies);
 /// - /genre/movie/list → [fakeTmdbGenres]
 /// - /discover/movie → [results]를 with_genres로 거른 뒤 20개씩 페이지로 나눔
 /// - /movie/popular → [popularResults]를 20개씩 페이지로 나눔
+/// - /movie/{id} → 같은 id의 Mock 상세(없는 id면 404)
 /// - [fail]이 true면 모든 요청이 연결 오류(DioException)
 /// - [delay]만큼 늦게 응답 — Loading 상태 확인용
 /// - [requests]에 보낸 요청 URL을 순서대로 기록
@@ -71,6 +72,24 @@ TmdbMovieService fakeTmdbService({
             );
           }
 
+          final detailMatch = RegExp(r'^/movie/(\d+)$')
+              .firstMatch(options.path);
+          if (detailMatch != null) {
+            final detail = _movieDetailJson(int.parse(detailMatch.group(1)!));
+            if (detail == null) {
+              return handler.reject(
+                DioException.badResponse(
+                  statusCode: 404,
+                  requestOptions: options,
+                  response: Response(requestOptions: options, statusCode: 404),
+                ),
+              );
+            }
+            return handler.resolve(
+              Response(requestOptions: options, statusCode: 200, data: detail),
+            );
+          }
+
           handler.resolve(
             Response(
               requestOptions: options,
@@ -87,6 +106,29 @@ TmdbMovieService fakeTmdbService({
       ),
     );
   return TmdbMovieService(dio);
+}
+
+/// Mock 상세를 TMDB 상세 응답 모양으로 바꿉니다. 시놉시스 문단은 줄바꿈으로 잇습니다.
+Map<String, Object?>? _movieDetailJson(int id) {
+  final detail = findMovieDetailById(id);
+  if (detail == null) return null;
+  return {
+    'id': id,
+    'title': detail.title,
+    'overview': detail.synopsis.join('\n\n'),
+    'poster_path': null,
+    'release_date': '${detail.year}-01-01',
+    'genres': [
+      for (final name in detail.genres)
+        {
+          'id': fakeTmdbGenres.entries.firstWhere((e) => e.value == name).key,
+          'name': name,
+        },
+    ],
+    'runtime': detail.runtimeMinutes,
+    'vote_average': detail.rating * 2,
+    'vote_count': detail.reviewCount ?? 0,
+  };
 }
 
 Map<String, Object?> _respond(

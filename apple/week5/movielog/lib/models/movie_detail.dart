@@ -1,11 +1,12 @@
 import 'movie.dart';
 
 /// W3-03 영화 상세 화면에 표시할 정보입니다.
-/// Figma에 상세 내용이 있는 영화는 Mock 상세 데이터에서, 나머지는 [Movie] 기본 정보로 만듭니다.
+/// Mock 영화는 Mock 상세 데이터나 [Movie] 기본 정보로, TMDB 영화는 상세 API 응답으로 만듭니다.
 class MovieDetail {
   const MovieDetail({
     required this.title,
-    required this.heroAsset,
+    this.heroAsset,
+    this.posterPath,
     required this.year,
     required this.genres,
     required this.rating,
@@ -19,6 +20,7 @@ class MovieDetail {
   MovieDetail.fromMovie(Movie movie)
     : title = movie.title,
       heroAsset = movie.posterAsset,
+      posterPath = null,
       year = movie.year,
       genres = [movie.genre],
       rating = movie.rating,
@@ -29,9 +31,14 @@ class MovieDetail {
 
   final String title;
 
-  /// 상단 히어로 이미지 (2:3으로 잘라 표시)
-  final String heroAsset;
-  final int year;
+  /// 상단 히어로 이미지 에셋 (2:3으로 잘라 표시) — Mock 영화
+  final String? heroAsset;
+
+  /// 상단 히어로 이미지의 TMDB poster_path — TMDB 영화
+  final String? posterPath;
+
+  /// 개봉 연도 — 개봉일 정보가 없으면 null이고 표시하지 않습니다.
+  final int? year;
   final List<String> genres;
   final double rating;
   final int? runtimeMinutes;
