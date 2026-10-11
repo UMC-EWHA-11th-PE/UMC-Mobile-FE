@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import '../models/movie.dart';
 import '../data/mock/movie_mock_data.dart';
+import '../data/models/tmdb_movie_dto.dart';
+import '../models/movie.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_shadows.dart';
 import '../widgets/app_header.dart';
@@ -14,6 +16,8 @@ import '../widgets/movie_card.dart';
 import '../widgets/pill_button.dart';
 import '../widgets/poster_badge.dart';
 import '../widgets/poster_image.dart';
+import '../widgets/tmdb_poster_image.dart';
+import '../view_models/movie_home_view_model.dart';
 
 /// W3-01 영화 홈 화면입니다.
 ///
@@ -21,7 +25,7 @@ import '../widgets/poster_image.dart';
 /// - [AppHeader] MovieLog 로고, 검색 버튼
 /// - [_GreetingSection] 오늘은 어떤 영화를 볼까요?
 /// - [_FeaturedBanner] 추천 신작 배너
-/// - [_PopularSection] 인기 영화 가로 목록
+/// - [_PopularSection] 인기 영화 가로 목록 — 5주차부터 [MovieHomeViewModel]의 TMDB 인기 영화 5개
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -57,7 +61,7 @@ class HomeScreen extends StatelessWidget {
                 ].join(' · '),
               ),
             ),
-            const _PopularSection(movies: popularMovies),
+            const _PopularSection(),
           ],
         ),
       ),
@@ -227,10 +231,10 @@ class _BannerChip extends StatelessWidget {
 
 /// 인기 영화 섹션 — 388 x 324, padding-bottom 8, gap 16
 /// 제목 줄(28) + 가로 목록(272)
+///
+/// 가로 목록 영역만 [Consumer]로 구독해, 상태가 바뀌어도 홈의 다른 섹션은 다시 그리지 않습니다.
 class _PopularSection extends StatelessWidget {
-  const _PopularSection({required this.movies});
-
-  final List<Movie> movies;
+  const _PopularSection();
 
   @override
   Widget build(BuildContext context) {
@@ -258,19 +262,74 @@ class _PopularSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           // 중앙 컨테이너 — 388 x 272, 카드 140 x 256, 간격 16
+          // 상태가 바뀌어도 높이를 유지해 아래 내용이 흔들리지 않게 합니다.
           SizedBox(
             height: 272,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: movies.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 16),
-              itemBuilder: (context, index) => Align(
-                alignment: Alignment.topCenter,
-                child: _PopularMovieCard(rank: index + 1, movie: movies[index]),
-              ),
+            child: Consumer<MovieHomeViewModel>(
+              builder: (context, viewModel, child) {
+                return switch (viewModel.status) {
+                  MovieHomeLoadStatus.idle || MovieHomeLoadStatus.loading =>
+                    const Center(child: CircularProgressIndicator()),
+                  MovieHomeLoadStatus.error => _PopularMessage(
+                    message: viewModel.message ?? '인기 영화를 불러오지 못했어요.',
+                    onRetry: () =>
+                        context.read<MovieHomeViewModel>().loadPopular(),
+                  ),
+                  MovieHomeLoadStatus.empty => const _PopularMessage(
+                    message: '인기 영화가 없어요.',
+                  ),
+                  MovieHomeLoadStatus.success => _PopularList(
+                    movies: viewModel.popularMovies,
+                  ),
+                };
+              },
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 인기 영화 가로 목록 — 순위는 목록 순서(1부터)
+class _PopularList extends StatelessWidget {
+  const _PopularList({required this.movies});
+
+  final List<TmdbMovieDto> movies;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: movies.length,
+      separatorBuilder: (context, index) => const SizedBox(width: 16),
+      itemBuilder: (context, index) => Align(
+        alignment: Alignment.topCenter,
+        child: _PopularMovieCard(rank: index + 1, movie: movies[index]),
+      ),
+    );
+  }
+}
+
+/// 인기 영화가 없거나 불러오지 못했을 때 — 안내 문구와 (실패 시) 다시 시도
+class _PopularMessage extends StatelessWidget {
+  const _PopularMessage({required this.message, this.onRetry});
+
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(message),
+          if (onRetry != null) ...[
+            const SizedBox(height: 12),
+            FilledButton(onPressed: onRetry, child: const Text('다시 시도')),
+          ],
         ],
       ),
     );
@@ -324,7 +383,7 @@ class _PopularMovieCard extends StatelessWidget {
   const _PopularMovieCard({required this.rank, required this.movie});
 
   final int rank;
-  final Movie movie;
+  final TmdbMovieDto movie;
 
   @override
   Widget build(BuildContext context) {
@@ -336,10 +395,11 @@ class _PopularMovieCard extends StatelessWidget {
       child: MovieCard(
         movieId: movie.id,
         title: movie.title,
-        poster: Image.asset(
-          movie.posterAsset,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+        poster: TmdbPosterImage(
+          posterPath: movie.posterPath,
+          // 크기는 카드의 AspectRatio(140:200)가 정하므로 가득 채웁니다.
+          width: double.infinity,
+          height: double.infinity,
         ),
         posterAspectRatio: 140 / 200,
         posterRadius: 16,
@@ -373,9 +433,9 @@ class _PopularMovieCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 // Manrope 400 / 12 / 16, #494551
-                // Figma 홈 카드는 10점 만점(9.6)이라 5점 만점 평점을 x2 해서 표시
+                // Figma 홈 카드는 10점 만점(9.6) — TMDB 평점도 10점 만점이라 그대로 표시
                 Text(
-                  (movie.rating * 2).toStringAsFixed(1),
+                  movie.voteAverage.toStringAsFixed(1),
                   style: textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w400,
                     color: colors.onSurfaceVariant,

@@ -19,6 +19,8 @@ class MovieHomeViewModel extends ChangeNotifier {
   MovieHomeLoadStatus status = MovieHomeLoadStatus.idle;
   String? message;
 
+  bool _disposed = false;
+
   /// Popular 첫 페이지에서 앞의 5개만 사용합니다.
   /// 결과가 5개보다 적어도 take는 있는 만큼만 돌려주므로 범위 오류가 나지 않습니다.
   Future<void> loadPopular() async {
@@ -36,6 +38,13 @@ class MovieHomeViewModel extends ChangeNotifier {
       message = '인기 영화를 불러오지 못했어요.';
     }
 
-    notifyListeners();
+    // 응답이 오기 전에 홈을 벗어났으면(dispose) 알리지 않습니다.
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

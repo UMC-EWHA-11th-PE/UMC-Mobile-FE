@@ -9,6 +9,7 @@ import '../screens/movie_list_screen.dart';
 import '../screens/my_page_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/start_screen.dart';
+import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
 
 /// 앱에서 사용하는 Route를 한곳에서 관리하는 클래스
@@ -39,11 +40,17 @@ class AppRouter {
           );
         },
         routes: [
+          // 화면마다 ViewModel을 따로 만들고, 화면을 벗어나면 dispose합니다.
           GoRoute(
             path: '/home',
-            builder: (context, state) => const HomeScreen(),
+            builder: (context, state) =>
+                ChangeNotifierProvider<MovieHomeViewModel>(
+                  create: (context) =>
+                      MovieHomeViewModel(context.read<TmdbMovieService>())
+                        ..loadPopular(),
+                  child: const HomeScreen(),
+                ),
           ),
-          // 화면마다 ViewModel을 따로 만들고, 화면을 벗어나면 dispose합니다.
           GoRoute(
             path: '/movies',
             builder: (context, state) =>
