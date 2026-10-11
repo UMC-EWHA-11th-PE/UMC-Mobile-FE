@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
-import 'theme/app_colors.dart';
-import 'theme/app_theme.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 
 /// 시작 화면 — 1주차 W1-00을 가져왔습니다. Figma 프레임 390 x 884 기준
 /// 시작하기 → 회원가입 (go로 이동해 회원가입에서 뒤로 돌아오지 않음)

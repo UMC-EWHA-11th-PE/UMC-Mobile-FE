@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
-import 'data/member_service.dart';
-import 'theme/app_theme.dart';
-import 'widgets/common_app_bar.dart';
+import '../data/services/member_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/common_app_bar.dart';
 
 /// 입력값을 검사해 오류 메시지를 돌려주는 함수 타입입니다. 통과하면 null입니다.
 typedef FieldValidator = String? Function(String? value);

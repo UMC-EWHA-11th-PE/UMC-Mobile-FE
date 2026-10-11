@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'api_config.dart';
+import '../../core/network/api_config.dart';
 
 class MemberCheckException implements Exception {
   const MemberCheckException(this.message);

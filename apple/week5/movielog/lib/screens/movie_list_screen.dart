@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'data/genre_preference.dart';
-import 'data/movie.dart';
-import 'data/rating_service.dart';
-import 'theme/app_shadows.dart';
-import 'widgets/app_header.dart';
-import 'widgets/movie_grid.dart';
-import 'widgets/movie_list_states.dart';
+import '../data/local/genre_preference.dart';
+import '../models/movie.dart';
+import '../data/services/rating_service.dart';
+import '../theme/app_shadows.dart';
+import '../widgets/app_header.dart';
+import '../widgets/movie_grid.dart';
+import '../widgets/movie_list_states.dart';
 
 /// W3-02 영화 목록 화면입니다.
 ///

@@ -2,9 +2,10 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'api_config.dart';
+import '../../core/network/api_config.dart';
+import '../../models/movie.dart';
+import '../mock/movie_mock_data.dart';
 import 'fake_movie_service.dart';
-import 'movie.dart';
 
 /// 유저별 평점 조회 API(GET /members/{memberId}/ratings)를 호출합니다.
 ///

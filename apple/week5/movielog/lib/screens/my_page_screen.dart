@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'data/profile_stat.dart';
-import 'theme/app_colors.dart';
-import 'theme/app_theme.dart';
-import 'widgets/app_header.dart';
-import 'widgets/svg_icon_button.dart';
-import 'widgets/tag_chip.dart';
+import '../models/profile_stat.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_header.dart';
+import '../widgets/svg_icon_button.dart';
+import '../widgets/tag_chip.dart';
 
 /// 마이 탭 — 1주차 W1-01 내 프로필 화면을 가져왔습니다.
 ///

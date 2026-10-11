@@ -5,15 +5,15 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:go_router/go_router.dart';
 
-import 'data/movie.dart';
-import 'data/movie_detail.dart';
-import 'theme/app_colors.dart';
-import 'theme/app_shadows.dart';
-import 'widgets/app_header.dart';
-import 'widgets/movie_card.dart';
-import 'widgets/pill_button.dart';
-import 'widgets/poster_badge.dart';
-import 'widgets/poster_image.dart';
+import '../models/movie.dart';
+import '../data/mock/movie_mock_data.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_shadows.dart';
+import '../widgets/app_header.dart';
+import '../widgets/movie_card.dart';
+import '../widgets/pill_button.dart';
+import '../widgets/poster_badge.dart';
+import '../widgets/poster_image.dart';
 
 /// W3-01 영화 홈 화면입니다.
 ///

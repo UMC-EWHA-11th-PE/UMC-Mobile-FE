@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/movie.dart';
+import '../models/movie.dart';
 import 'movie_card.dart';
 import 'poster_badge.dart';
 

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import 'package:movielog/data/movie.dart';
+import 'package:movielog/data/mock/movie_mock_data.dart';
 
 /// 서버 없이 화면을 테스트하기 위한 가짜 movie 서버입니다.
 /// - GET /members/{memberId}/ratings → Mock 영화 6개에 평점을 남긴 응답

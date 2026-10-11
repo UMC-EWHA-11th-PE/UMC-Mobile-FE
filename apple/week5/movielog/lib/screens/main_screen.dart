@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
-import 'theme/app_shadows.dart';
-import 'theme/app_theme.dart';
+import '../theme/app_shadows.dart';
+import '../theme/app_theme.dart';
 
 class MainScreen extends StatelessWidget {
   const MainScreen({

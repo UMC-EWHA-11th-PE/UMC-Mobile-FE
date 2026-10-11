@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'data/movie_detail.dart';
-import 'theme/app_colors.dart';
-import 'theme/app_shadows.dart';
-import 'theme/app_theme.dart';
-import 'widgets/app_header.dart';
-import 'widgets/movie_rating_indicator.dart';
-import 'widgets/pill_button.dart';
-import 'widgets/poster_image.dart';
-import 'widgets/rating_dialog.dart';
-import 'widgets/svg_icon_button.dart';
-import 'widgets/tag_chip.dart';
+import '../data/mock/movie_mock_data.dart';
+import '../models/movie_detail.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_shadows.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_header.dart';
+import '../widgets/movie_rating_indicator.dart';
+import '../widgets/pill_button.dart';
+import '../widgets/poster_image.dart';
+import '../widgets/rating_dialog.dart';
+import '../widgets/svg_icon_button.dart';
+import '../widgets/tag_chip.dart';
 
 /// W3-03 영화 상세 화면입니다.
 ///

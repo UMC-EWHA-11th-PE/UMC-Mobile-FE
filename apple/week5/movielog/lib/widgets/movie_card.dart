@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../data/movie.dart';
+import '../models/movie.dart';
 import 'poster_image.dart';
 
 /// 공통 영화 카드 — 포스터 + 제목 + 보조 줄, 누르면 영화 상세로 이동

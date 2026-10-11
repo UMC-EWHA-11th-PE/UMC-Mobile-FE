@@ -5,10 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
-import 'package:movielog/data/fake_movie_service.dart';
-import 'package:movielog/data/genre_preference.dart';
-import 'package:movielog/data/secure_storage_cleanup.dart';
-import 'package:movielog/movie_list_screen.dart';
+import 'package:movielog/data/services/fake_movie_service.dart';
+import 'package:movielog/data/local/genre_preference.dart';
+import 'package:movielog/data/local/secure_storage_cleanup.dart';
+import 'package:movielog/screens/movie_list_screen.dart';
 import 'package:movielog/theme/app_theme.dart';
 
 Widget _app(MovieLoadMode mode, {Key? key}) => MaterialApp(

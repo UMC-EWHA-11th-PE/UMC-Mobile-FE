@@ -1,4 +1,5 @@
-import 'movie.dart';
+import '../../models/movie.dart';
+import '../mock/movie_mock_data.dart';
 
 /// Mock 응답 시나리오 — 화면에서 성공·빈 목록·실패 상태를 각각 확인하기 위해 사용합니다.
 enum MovieLoadMode { success, empty, failure }

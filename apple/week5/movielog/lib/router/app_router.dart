@@ -1,12 +1,12 @@
 import 'package:go_router/go_router.dart';
 
-import '../home_screen.dart';
-import '../main_screen.dart';
-import '../movie_detail_screen.dart';
-import '../movie_list_screen.dart';
-import '../my_page_screen.dart';
-import '../register_screen.dart';
-import '../start_screen.dart';
+import '../screens/home_screen.dart';
+import '../screens/main_screen.dart';
+import '../screens/movie_detail_screen.dart';
+import '../screens/movie_list_screen.dart';
+import '../screens/my_page_screen.dart';
+import '../screens/register_screen.dart';
+import '../screens/start_screen.dart';
 
 /// 앱에서 사용하는 Route를 한곳에서 관리하는 클래스
 class AppRouter {

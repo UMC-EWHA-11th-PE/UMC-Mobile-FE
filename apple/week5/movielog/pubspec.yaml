@@ -40,6 +40,7 @@ dependencies:
   shared_preferences: ^2.5.6
   flutter_secure_storage: ^11.2.0
   http: ^1.6.0
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:
@@ -66,6 +67,7 @@ flutter:
 
   # 공통 에셋 팩(movielog-flutter-assets) 구조 — 라이선스는 ASSET-NOTICE.md 참고
   assets:
+    - .env
     - assets/images/profile/
     - assets/images/posters/
     - assets/logos/
