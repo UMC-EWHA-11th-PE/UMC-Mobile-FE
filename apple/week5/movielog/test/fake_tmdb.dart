@@ -46,11 +46,13 @@ final fakeTmdbPopularMovies = _toTmdbJson(popularMovies);
 /// - /discover/movie → [results]를 with_genres로 거른 뒤 20개씩 페이지로 나눔
 /// - /movie/popular → [popularResults]를 20개씩 페이지로 나눔
 /// - /movie/{id} → 같은 id의 Mock 상세(없는 id면 404)
+/// - [resultsBuilder]가 있으면 요청할 때마다 Discover 결과를 새로 받음 (새로고침 확인용)
 /// - [fail]이 true면 모든 요청이 연결 오류(DioException)
 /// - [delay]만큼 늦게 응답 — Loading 상태 확인용
 /// - [requests]에 보낸 요청 URL을 순서대로 기록
 TmdbMovieService fakeTmdbService({
   List<Map<String, Object?>>? results,
+  List<Map<String, Object?>> Function()? resultsBuilder,
   List<Map<String, Object?>>? popularResults,
   bool Function()? fail,
   Duration delay = Duration.zero,
@@ -98,7 +100,7 @@ TmdbMovieService fakeTmdbService({
                 options,
                 options.path == '/movie/popular'
                     ? popularResults ?? fakeTmdbPopularMovies
-                    : results ?? fakeTmdbMovies,
+                    : resultsBuilder?.call() ?? results ?? fakeTmdbMovies,
               ),
             ),
           );

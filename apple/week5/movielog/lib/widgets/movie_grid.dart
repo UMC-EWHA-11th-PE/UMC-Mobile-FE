@@ -25,6 +25,8 @@ class MovieGrid extends StatelessWidget {
         // 카드 너비 171 기준: 포스터 2:3(256.5) + 12 + 제목 24 + 소제목 24
         final itemWidth = (constraints.maxWidth - 16 * 2 - 16) / 2;
         return GridView.builder(
+          // 영화가 적어 화면을 다 채우지 않아도 당겨서 새로고침할 수 있도록 항상 스크롤 가능하게 둡니다.
+          physics: const AlwaysScrollableScrollPhysics(),
           // Figma padding-bottom 96 = 하단 네비(80) + 여백 16.
           // 네비가 본문을 덮지 않으므로 16만 둡니다.
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

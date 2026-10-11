@@ -185,6 +185,95 @@ void main() {
     });
   });
 
+  group('Pull to Refresh', () {
+    Future<void> pullToRefresh(WidgetTester tester) async {
+      await tester.fling(find.byType(GridView), const Offset(0, 400), 1000);
+      // 새로고침이 시작될 만큼만 진행
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    testWidgets('선택한 장르 그대로 page 1부터 다시 요청하고, 그동안 기존 목록을 유지한다', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final requests = <Uri>[];
+      var results = fakeTmdbMovies;
+      await tester.pumpWidget(
+        _app(
+          fakeTmdbService(
+            requests: requests,
+            delay: const Duration(seconds: 2),
+            resultsBuilder: () => results,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('SF'));
+      await tester.pumpAndSettle();
+      expect(find.text('우주의 끝에서'), findsOneWidget);
+
+      // 서버의 SF 목록이 바뀐 상태에서 새로고침
+      results = [
+        ...fakeTmdbMovies,
+        {
+          'id': 100,
+          'title': '새로 나온 SF',
+          'genre_ids': [878],
+        },
+      ];
+      requests.clear();
+      await pullToRefresh(tester);
+
+      // 새로고침 중: 로딩 화면 대신 기존 목록 유지, 장르 칩은 누를 수 없음
+      expect(find.byType(RefreshProgressIndicator), findsOneWidget);
+      expect(find.text('우주의 끝에서'), findsOneWidget);
+      await tester.tap(find.text('드라마'), warnIfMissed: false);
+
+      await tester.pumpAndSettle();
+      expect(_discoverGenres(requests), ['878']);
+      expect(requests.single.queryParameters['page'], '1');
+      expect(find.text('새로 나온 SF'), findsOneWidget);
+    });
+
+    testWidgets('새로고침이 실패하면 기존 목록을 유지한 채 재시도 Dialog를 띄운다', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      var failing = false;
+      await tester.pumpWidget(_app(fakeTmdbService(fail: () => failing)));
+      await tester.pumpAndSettle();
+
+      failing = true;
+      await pullToRefresh(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text('영화를 불러오지 못했어요'), findsOneWidget);
+      expect(find.text('별빛 아래 우리'), findsOneWidget);
+
+      // 네트워크를 다시 켜고 재시도 → Dialog가 닫히고 목록을 다시 불러옴
+      failing = false;
+      await tester.tap(find.text('다시 시도'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsNothing);
+      expect(find.text('별빛 아래 우리'), findsOneWidget);
+    });
+
+    test('목록 전체를 불러오는 중에는 새로고침하지 않는다', () async {
+      final requests = <Uri>[];
+      final viewModel = MovieListViewModel(fakeTmdbService(requests: requests));
+
+      final loading = viewModel.loadInitial();
+      await viewModel.refresh();
+      await loading;
+
+      // loadInitial의 Discover 요청만 있음
+      expect(_discoverGenres(requests), [null]);
+    });
+  });
+
   group('요청 실패 재시도 Dialog', () {
     /// 전체 목록을 불러온 뒤 네트워크가 끊긴 상태(goOffline)에서 SF를 선택합니다.
     Future<void> selectSfWhileOffline(

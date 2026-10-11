@@ -14,6 +14,7 @@ import '../widgets/movie_retry_dialog.dart';
 /// 5주차부터 [MovieListViewModel]의 상태를 [Consumer]로 구독해 그대로 그립니다.
 /// 화면은 API를 직접 부르지 않고, 장르 선택·다시 시도만 ViewModel에 전달합니다.
 /// - 불러오는 중: [MovieListLoading] (장르 칩은 누를 수 없음)
+/// - 성공 목록은 당겨서 새로고침([RefreshIndicator]) — 새로고침 중에도 기존 목록 유지
 /// - 실패: [MovieListError] (다시 시도)
 /// - 빈 목록: [MovieListEmpty]
 /// - 성공: [MovieGrid] — TMDB Discover 최대 30개
@@ -85,9 +86,16 @@ class _MovieListScreenState extends State<MovieListScreen> {
               onRetry: () => context.read<MovieListViewModel>().loadInitial(),
             ),
             MovieListLoadStatus.empty => const MovieListEmpty(),
-            MovieListLoadStatus.success => MovieGrid(
-              movies: viewModel.movies,
-              genreNames: viewModel.genreNames,
+            // Pull to Refresh — Flutter 기본 RefreshIndicator
+            MovieListLoadStatus.success => RefreshIndicator(
+              onRefresh: () => context.read<MovieListViewModel>().refresh(),
+              // 목록 전체를 불러오는 중에는 당겨도 새로고침하지 않습니다.
+              notificationPredicate: (notification) =>
+                  !viewModel.isLoading && notification.depth == 0,
+              child: MovieGrid(
+                movies: viewModel.movies,
+                genreNames: viewModel.genreNames,
+              ),
             ),
           };
 
@@ -103,7 +111,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
                 child: _GenreFilterBar(
                   genres: viewModel.genres,
                   selectedGenreId: viewModel.selectedGenreId,
-                  enabled: !viewModel.isLoading,
+                  enabled: !viewModel.isRequesting,
                   onSelected: (genreId) =>
                       context.read<MovieListViewModel>().selectGenre(genreId),
                 ),

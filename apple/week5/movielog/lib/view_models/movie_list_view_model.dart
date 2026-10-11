@@ -37,10 +37,16 @@ class MovieListViewModel extends ChangeNotifier {
   /// 화면에 보이는 [movies]를 불러온 장르 — 재시도 Dialog에서 취소하면 칩을 이 장르로 되돌립니다.
   int? _loadedGenreId;
 
-  /// Discover 요청 중에는 장르를 바꿀 수 없습니다.
+  /// 목록 전체를 불러오는 중 — 화면은 로딩 표시를 보여주고 Pull to Refresh를 막습니다.
   bool get isLoading =>
       status == MovieListLoadStatus.idle ||
       status == MovieListLoadStatus.loading;
+
+  /// Pull to Refresh로 다시 불러오는 중 — 기존 목록은 화면에 그대로 둡니다.
+  bool isRefreshing = false;
+
+  /// Discover 요청 중(로딩·새로고침)에는 장르를 바꿀 수 없습니다.
+  bool get isRequesting => isLoading || isRefreshing;
 
   /// 장르 id → 이름 (영화 카드 소제목용)
   Map<int, String> get genreNames => {
@@ -114,7 +120,7 @@ class MovieListViewModel extends ChangeNotifier {
   /// 실패했을 때 최근에 성공한 목록이 있으면 비우지 않고 유지한 채
   /// [retryDialogVisible]을 켜 재시도 Dialog를 띄우게 합니다. (Challenge)
   Future<void> selectGenre(int? genreId) async {
-    if (isLoading) return;
+    if (isRequesting) return;
     selectedGenreId = genreId;
     final version = ++_requestVersion;
     status = MovieListLoadStatus.loading;
@@ -139,6 +145,40 @@ class MovieListViewModel extends ChangeNotifier {
         status = MovieListLoadStatus.error;
         message = '해당 장르 영화를 불러오지 못했어요.';
       }
+    }
+
+    if (!_disposed && version == _requestVersion) notifyListeners();
+  }
+
+  /// Pull to Refresh — 지금 선택된 장르 그대로 Discover를 page 1부터 다시 불러옵니다.
+  ///
+  /// 새로고침 중에는 기존 목록을 지우지 않고, 성공하면 최신 목록으로 바꿉니다.
+  /// 실패하면 기존 목록을 유지한 채 재시도 Dialog를 띄우게 합니다.
+  Future<void> refresh() async {
+    if (isRequesting) return;
+    final genreId = selectedGenreId;
+    final version = ++_requestVersion;
+    isRefreshing = true;
+    notifyListeners();
+
+    try {
+      final result = await fetchUpToThirtyMovies(genreId: genreId);
+      if (_disposed || version != _requestVersion) return;
+      movies = result;
+      _loadedGenreId = genreId;
+      status = result.isEmpty
+          ? MovieListLoadStatus.empty
+          : MovieListLoadStatus.success;
+    } on DioException {
+      if (_disposed || version != _requestVersion) return;
+      if (movies.isNotEmpty) {
+        retryDialogVisible = true;
+      } else {
+        status = MovieListLoadStatus.error;
+        message = '영화를 불러오지 못했어요. 다시 시도해 주세요.';
+      }
+    } finally {
+      isRefreshing = false;
     }
 
     if (!_disposed && version == _requestVersion) notifyListeners();
