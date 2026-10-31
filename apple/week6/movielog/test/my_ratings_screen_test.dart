@@ -8,6 +8,7 @@ import 'package:movielog/data/services/rating_api_service.dart';
 import 'package:movielog/screens/my_ratings_screen.dart';
 import 'package:movielog/theme/app_theme.dart';
 import 'package:movielog/view_models/my_ratings_view_model.dart';
+import 'package:movielog/widgets/movielog_button.dart';
 
 import 'fake_ratings.dart';
 import 'fake_tmdb.dart';
@@ -105,6 +106,16 @@ void main() {
 
     expect(find.text('존재하지 않는 회원입니다.'), findsOneWidget);
     expect(find.text('다시 시도'), findsOneWidget);
+    // 다시 시도는 공용 버튼 고정 너비 120
+    expect(
+      tester.getSize(
+        find.ancestor(
+          of: find.text('다시 시도'),
+          matching: find.byType(MovieLogButton),
+        ),
+      ),
+      const Size(120, 44),
+    );
   });
 
   testWidgets('다시 시도를 누르면 다시 불러온다', (tester) async {
