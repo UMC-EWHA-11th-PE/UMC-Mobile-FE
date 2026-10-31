@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../models/profile_stat.dart';
 import '../theme/app_colors.dart';
@@ -14,6 +15,7 @@ import '../widgets/tag_chip.dart';
 /// - [_ProfileHeader] 프로필 사진, 닉네임, 소개, 프로필 수정 버튼
 /// - [_ProfileStats] 본 영화·평점·즐겨찾기 통계
 /// - [_FavoriteGenres] 선호하는 장르
+/// - [_MyRatingsEntry] 내가 등록한 평점 화면으로 이동 (6주차)
 class MyPageScreen extends StatelessWidget {
   const MyPageScreen({super.key});
 
@@ -46,6 +48,8 @@ class MyPageScreen extends StatelessWidget {
             _ProfileStats(),
             SizedBox(height: 32),
             _FavoriteGenres(),
+            SizedBox(height: 32),
+            _MyRatingsEntry(),
           ],
         ),
       ),
@@ -239,6 +243,21 @@ class _FavoriteGenres extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// 내가 등록한 평점 진입 항목 — 하단 탭 없이 /my/ratings 화면을 위에 띄웁니다.
+class _MyRatingsEntry extends StatelessWidget {
+  const _MyRatingsEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text('내가 등록한 평점', style: Theme.of(context).textTheme.titleMedium),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push('/my/ratings'),
     );
   }
 }

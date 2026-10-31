@@ -54,6 +54,17 @@ class TmdbMovieService {
     return TmdbMovieDetailDto.fromJson(response.data as Map<String, dynamic>);
   }
 
+  /// 영화 한 편 찾기 — 없는 영화(404)면 null, 그 밖의 실패는 그대로 DioException입니다.
+  /// 자체 서버 평점의 movieId(TMDB id)로 제목·포스터를 함께 보여줄 때 씁니다.
+  Future<TmdbMovieDetailDto?> findMovieById(int movieId) async {
+    try {
+      return await fetchMovieDetail(movieId);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
   /// 영화 장르 목록 — GET /genre/movie/list
   Future<List<TmdbGenreDto>> fetchGenres() async {
     final response = await _dio.get(

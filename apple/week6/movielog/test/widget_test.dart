@@ -9,6 +9,7 @@ import 'package:movielog/router/app_router.dart';
 import 'package:movielog/widgets/movie_card.dart';
 
 import 'fake_member_check.dart';
+import 'fake_ratings.dart';
 import 'fake_tmdb.dart';
 
 void main() {
@@ -602,6 +603,41 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Cinema Archive'), findsOneWidget);
     expect(find.text('(1,245)'), findsOneWidget);
+  });
+
+  testWidgets('마이 → 내가 등록한 평점은 하단 탭 없이 열리고, 뒤로가면 마이로 돌아온다', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MovieLogApp(
+        tmdbMovieService: fakeTmdbService(),
+        ratingApiService: fakeRatingApiService(
+          ratings: [fakeRatingJson(movieId: 1)],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    AppRouter.router.go('/my');
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsOneWidget);
+
+    await tester.tap(find.text('내가 등록한 평점'));
+    await tester.pumpAndSettle();
+    expect(
+      AppRouter.router.routerDelegate.currentConfiguration.last.matchedLocation,
+      '/my/ratings',
+    );
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.text('별빛 아래 우리'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('뒤로가기'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('내 프로필'), findsOneWidget);
   });
 
   testWidgets('마이 탭에 1주차 프로필 화면이 나온다', (WidgetTester tester) async {

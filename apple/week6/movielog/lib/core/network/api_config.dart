@@ -10,8 +10,4 @@ class ApiConfig {
     'API_BASE_URL',
     defaultValue: 'http://localhost:8080',
   );
-
-  /// "내가 등록한 평점"의 조회 대상 — 로그인이 아직 없어 학습용 memberId 1로 고정합니다.
-  /// 실제 회원 식별은 JWT 주차에서 바뀝니다.
-  static const memberId = 1;
 }
