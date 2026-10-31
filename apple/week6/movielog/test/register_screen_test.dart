@@ -53,8 +53,11 @@ void main() {
     final button = find.byType(MovieLogButton).first;
     final buttonWidth = tester.getSize(button).width;
     expect(buttonWidth, lessThan(150));
-    // 입력창(Expanded)이 남은 너비를 모두 사용 — 화면 390 - 좌우 16 x 2 - 간격 8
-    expect(tester.getSize(_nicknameField).width, 390 - 32 - 8 - buttonWidth);
+    // 입력창(Expanded)이 남은 너비를 모두 사용 — 화면 390 - 좌우 16 x 2 - 간격 10
+    expect(tester.getSize(_nicknameField).width, 390 - 32 - 10 - buttonWidth);
+    // 입력창·버튼 높이 44 (W6-01)
+    expect(tester.getSize(_nicknameField).height, 44);
+    expect(tester.getSize(button).height, 44);
   });
 
   testWidgets('형식이 맞지 않으면 중복 확인 버튼이 비활성이다', (tester) async {
@@ -84,7 +87,7 @@ void main() {
     gate.complete();
     await tester.pumpAndSettle();
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('사용할 수 있는 닉네임입니다.'), findsOneWidget);
+    expect(find.text('사용 가능한 닉네임입니다.'), findsOneWidget);
   });
 
   testWidgets('중복이면 에러로 바뀌고, 입력을 바꾸면 사라지고, 같은 값을 다시 입력하면 바로 에러', (
@@ -137,6 +140,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('이미 사용 중인 닉네임입니다.'), findsOneWidget);
-    expect(find.text('사용할 수 있는 이메일입니다.'), findsOneWidget);
+    expect(find.text('사용 가능한 이메일입니다.'), findsOneWidget);
   });
 }

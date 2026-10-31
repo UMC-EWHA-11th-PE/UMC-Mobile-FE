@@ -65,7 +65,7 @@ class AppColors {
   /// 영화 목록 포스터 위 별점 칩 글자
   static const Color onInverseSurface = Color(0xFFF5EFF7);
 
-  /// 평점 Dialog 제목 (#25232A)
+  /// 평점 Dialog 제목, 회원가입 환영 문구·약관 문구 (#25232A)
   static const Color dialogTitle = Color(0xFF25232A);
 
   /// 평점 Dialog 선택되지 않은 별
@@ -114,4 +114,19 @@ class AppColors {
 
   /// 재시도 Dialog 취소 버튼 배경 (W5-01)
   static const Color retryCancelButton = Color(0xFFF4F0FA);
+
+  /// 회원가입 입력창 배경 (W6-01)
+  static const Color inputBackground = Color(0xFFFEFCF9);
+
+  /// 회원가입 입력창 테두리 (W6-01)
+  static const Color inputBorder = Color(0xFFD9D3E1);
+
+  /// 공용 버튼 통신 중 배경 (W6-01)
+  static const Color buttonLoading = Color(0xFF79747E);
+
+  /// 중복 확인 통과 안내 — 사용 가능한 닉네임입니다. (W6-01)
+  static const Color checkAvailable = Color(0xFF2E7D32);
+
+  /// 중복 확인 진행 안내 — 사용 가능 여부를 확인 중입니다. (W6-01)
+  static const Color checkInProgress = Color(0xFF1565C0);
 }

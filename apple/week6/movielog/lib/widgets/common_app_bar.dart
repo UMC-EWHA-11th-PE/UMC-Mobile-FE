@@ -11,9 +11,13 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.title,
     this.onBack,
     this.showBack = true,
+    this.titleStyle,
   });
 
   final String title;
+
+  /// null이면 테마의 AppBar 제목 스타일(Manrope 500 / 22, #6750A4)을 씁니다.
+  final TextStyle? titleStyle;
 
   /// null이면 Navigator.maybePop을 호출합니다.
   final VoidCallback? onBack;
@@ -29,22 +33,27 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
     final colors = Theme.of(context).colorScheme;
 
     if (!showBack) {
-      return AppBar(title: Text(title), automaticallyImplyLeading: false);
+      return AppBar(
+        title: Text(title),
+        titleTextStyle: titleStyle,
+        automaticallyImplyLeading: false,
+      );
     }
 
     return AppBar(
       title: Text(title),
+      titleTextStyle: titleStyle,
       // padding-left 8 + 40x40 버튼
       leadingWidth: 8 + 40,
       leading: Padding(
         padding: const EdgeInsets.only(left: 8),
         child: IconButton(
           onPressed: onBack ?? () => Navigator.of(context).maybePop(),
-          // 화살표 아이콘 컨테이너 16x16 — 공통 에셋 SVG 사용
+          // 화살표 아이콘 20x20 — 공통 에셋 SVG 사용
           icon: SvgPicture.asset(
             'assets/icons/arrow_back.svg',
-            width: 16,
-            height: 16,
+            width: 20,
+            height: 20,
             colorFilter: ColorFilter.mode(colors.onSurface, BlendMode.srcIn),
           ),
           padding: EdgeInsets.zero,

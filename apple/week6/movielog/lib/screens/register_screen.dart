@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../view_models/sign_up_view_model.dart';
 import '../widgets/common_app_bar.dart';
@@ -104,13 +105,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     context.go('/home');
   }
 
+  /// 시작 화면에서 go로 들어와 돌아갈 화면이 쌓여 있지 않으므로 시작 화면으로 go합니다.
+  void _backToStart() => context.go('/start');
+
   @override
   Widget build(BuildContext context) {
-    // 회원가입에서는 시스템 뒤로가기(Android 뒤로 버튼 등)도 막습니다.
+    // 시스템 뒤로가기(Android 뒤로 버튼 등)도 헤더 화살표와 같이 시작 화면으로 보냅니다.
     return PopScope(
       canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _backToStart();
+      },
       child: Scaffold(
-        appBar: const CommonAppBar(title: '회원가입', showBack: false),
+        appBar: CommonAppBar(
+          title: '회원가입',
+          titleStyle: AppTheme.signupAppBarTitle,
+          onBack: _backToStart,
+        ),
         body: SafeArea(
           // 키보드가 올라와도 입력창이 가려지지 않도록 스크롤 가능하게 만듭니다.
           child: LayoutBuilder(
@@ -183,21 +194,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-/// 환영합니다 — 356x64, padding-bottom 16, Manrope 500 16/24 #494551 center
+/// 환영합니다 — padding-bottom 16, 가운데 정렬 (W6-01)
+/// - 환영합니다! Manrope 700 / 16
+/// - 안내 문구 Manrope 400 / 14, 제목과 gap 10
 class _WelcomeMessage extends StatelessWidget {
   const _WelcomeMessage();
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Text(
-        '환영합니다!\n간단한 정보만 입력하고 시작해보세요.',
-        textAlign: TextAlign.center,
-        style: textTheme.titleMedium?.copyWith(color: colors.onSurfaceVariant),
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 16),
+      child: Column(
+        children: [
+          Text(
+            '환영합니다!',
+            textAlign: TextAlign.center,
+            style: AppTheme.signupWelcomeTitle,
+          ),
+          SizedBox(height: 10),
+          Text(
+            '간단한 정보만 입력하고 시작해보세요.',
+            textAlign: TextAlign.center,
+            style: AppTheme.signupWelcomeBody,
+          ),
+        ],
       ),
     );
   }
@@ -231,6 +251,11 @@ class _SignupFields extends StatelessWidget {
   /// 비밀번호에서 키보드 완료를 눌렀을 때 실행합니다. null이면 아무 일도 하지 않습니다.
   final VoidCallback? onPasswordSubmitted;
 
+  /// 입력 묶음 사이 간격 16 — 아래에 확인 중·사용 가능 문구가 있으면
+  /// 문구 영역(6 + 16) 뒤 7만 띄워 W6-01처럼 다음 입력창 위치를 맞춥니다.
+  static double _gapAfter(CheckStatus status) =>
+      _DuplicateCheckRow.hasMessage(status) ? 7 : 16;
+
   /// 비어 있으면 suffixIcon 자리를 아예 만들지 않습니다. (W2-01)
   /// [serverErrorText]가 있으면 형식이 맞아도 오류 아이콘을 보여줍니다.
   Widget? _statusIcon(
@@ -245,10 +270,7 @@ class _SignupFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    // 사용 가능 안내 — 에러 문구와 같은 자리·크기, primary 색
-    final availableStyle = textTheme.bodySmall?.copyWith(color: colors.primary);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -258,6 +280,8 @@ class _SignupFields extends StatelessWidget {
           label: '닉네임',
           child: _DuplicateCheckRow(
             status: viewModel.nicknameCheckStatus,
+            checkingText: '닉네임 사용 가능 여부를 확인 중입니다.',
+            availableText: '사용 가능한 닉네임입니다.',
             // 형식이 맞고 ViewModel이 허락할 때만 중복 확인을 누를 수 있습니다.
             onCheck:
                 validateNickname(nicknameController.text) == null &&
@@ -277,11 +301,6 @@ class _SignupFields extends StatelessWidget {
                 hintText: '닉네임을 입력해주세요',
                 // validator가 통과해도 서버 중복이면 에러 상태로 보입니다.
                 errorText: viewModel.nicknameErrorText,
-                helperText:
-                    viewModel.nicknameCheckStatus == CheckStatus.available
-                    ? '사용할 수 있는 닉네임입니다.'
-                    : null,
-                helperStyle: availableStyle,
                 suffixIcon: _statusIcon(
                   nicknameController.text,
                   validateNickname,
@@ -291,12 +310,14 @@ class _SignupFields extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: _gapAfter(viewModel.nicknameCheckStatus)),
         // 이메일
         _LabeledField(
           label: '이메일',
           child: _DuplicateCheckRow(
             status: viewModel.emailCheckStatus,
+            checkingText: '이메일 사용 가능 여부를 확인 중입니다.',
+            availableText: '사용 가능한 이메일입니다.',
             onCheck:
                 validateEmail(emailController.text) == null &&
                     viewModel.canCheckEmail
@@ -316,10 +337,6 @@ class _SignupFields extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: '이메일 주소를 입력해주세요',
                 errorText: viewModel.emailErrorText,
-                helperText: viewModel.emailCheckStatus == CheckStatus.available
-                    ? '사용할 수 있는 이메일입니다.'
-                    : null,
-                helperStyle: availableStyle,
                 suffixIcon: _statusIcon(
                   emailController.text,
                   validateEmail,
@@ -329,7 +346,7 @@ class _SignupFields extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: _gapAfter(viewModel.emailCheckStatus)),
         // 비밀번호
         _LabeledField(
           label: '비밀번호',
@@ -376,36 +393,72 @@ class _LabeledField extends StatelessWidget {
   }
 }
 
-/// 입력창 오른쪽에 중복 확인 버튼을 나란히 둡니다.
+/// 입력창 오른쪽에 중복 확인 버튼을 나란히 두고, 아래에 확인 상태 문구를 붙입니다. (W6-01)
 ///
 /// 버튼은 입력창 옆 좁은 자리라 width 없이 글자 길이만큼만 차지하고,
-/// 입력창(Expanded)이 남은 너비를 씁니다.
+/// 입력창(Expanded)이 남은 너비를 씁니다. 입력창과 버튼 사이 10.
+/// - 확인 중: [checkingText] #1565C0
+/// - 사용 가능: [availableText] #2E7D32
+/// - 중복·통신 실패는 입력창의 errorText(빨간 문구)로 보여줍니다.
 class _DuplicateCheckRow extends StatelessWidget {
   const _DuplicateCheckRow({
     required this.field,
     required this.status,
+    required this.checkingText,
+    required this.availableText,
     required this.onCheck,
   });
 
   final Widget field;
   final CheckStatus status;
+  final String checkingText;
+  final String availableText;
 
   /// null이면 중복 확인 버튼이 비활성 상태로 그려집니다.
   final VoidCallback? onCheck;
 
+  static bool hasMessage(CheckStatus status) =>
+      status == CheckStatus.checking || status == CheckStatus.available;
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      // 아래에 에러·안내 문구가 붙어도 버튼은 입력창 높이에 맞춰 위에 둡니다.
+    final (message, color) = switch (status) {
+      CheckStatus.checking => (checkingText, AppColors.checkInProgress),
+      CheckStatus.available => (availableText, AppColors.checkAvailable),
+      _ => (null, null),
+    };
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: field),
-        const SizedBox(width: 8),
-        MovieLogButton(
-          label: '중복 확인',
-          isLoading: status == CheckStatus.checking,
-          onPressed: onCheck,
+        Row(
+          // 아래에 에러 문구가 붙어도 버튼은 입력창 높이에 맞춰 위에 둡니다.
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: field),
+            const SizedBox(width: 10),
+            MovieLogButton(
+              label: '중복 확인',
+              isLoading: status == CheckStatus.checking,
+              onPressed: onCheck,
+            ),
+          ],
         ),
+        if (message != null)
+          // 입력창 아래 6, 문구 영역 높이 16, 왼쪽 1
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 1),
+            child: SizedBox(
+              height: 16,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  message,
+                  style: AppTheme.checkStatus.copyWith(color: color),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -423,8 +476,8 @@ class _StatusIcon extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     return Padding(
-      // 오른쪽 여백 16 (Figma padding-right)
-      padding: const EdgeInsets.only(right: 16),
+      // 오른쪽 여백 12 (W6-01)
+      padding: const EdgeInsets.only(right: 12),
       // 공통 에셋 SVG를 쓰고 colorFilter로 상태 색을 입힙니다.
       child: SvgPicture.asset(
         hasError
@@ -484,20 +537,18 @@ class _SignupFooter extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 32 - AppTheme.checkboxSize),
-                Text('필수 약관에 동의합니다', style: textTheme.titleMedium),
+                const Text('필수 약관에 동의합니다', style: AppTheme.signupTerms),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          // 가입하기 — 356x72, padding-bottom 16, 내부 버튼 56
+          // 가입하기 — padding-bottom 16, 공용 버튼 전체 너비 (W6-01)
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: SizedBox(
-              height: AppTheme.buttonHeight,
-              child: ElevatedButton(
-                onPressed: onSubmit,
-                child: const Text('가입하기'),
-              ),
+            child: MovieLogButton(
+              label: '가입하기',
+              width: double.infinity,
+              onPressed: onSubmit,
             ),
           ),
           const SizedBox(height: 24),

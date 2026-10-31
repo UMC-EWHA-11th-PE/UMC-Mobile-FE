@@ -21,7 +21,7 @@ void main() {
         InMemorySharedPreferencesAsync.empty();
   });
 
-  testWidgets('시작 → 회원가입 → 홈으로 이동하고, 회원가입·홈에서는 뒤로 갈 수 없다', (
+  testWidgets('시작 → 회원가입 → 홈으로 이동하고, 회원가입 뒤로가기는 시작 화면, 홈에서는 뒤로 갈 수 없다', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -41,10 +41,23 @@ void main() {
     await tester.tap(find.text('시작하기'));
     await tester.pumpAndSettle();
 
-    // 회원가입: 뒤로가기 버튼 없음, 돌아갈 화면 없음
-    expect(find.text('환영합니다!\n간단한 정보만 입력하고 시작해보세요.'), findsOneWidget);
-    expect(find.byTooltip('뒤로가기'), findsNothing);
+    // 회원가입: 쌓인 화면은 없지만 헤더 뒤로가기는 시작 화면으로 이동
+    expect(find.text('환영합니다!'), findsOneWidget);
+    expect(find.text('간단한 정보만 입력하고 시작해보세요.'), findsOneWidget);
     expect(AppRouter.router.canPop(), isFalse);
+    await tester.tap(find.byTooltip('뒤로가기'));
+    await tester.pumpAndSettle();
+    expect(find.text('영화의 순간을\n기록하세요'), findsOneWidget);
+
+    // 시스템 뒤로가기(Android 뒤로 버튼)도 시작 화면으로 이동
+    await tester.tap(find.text('시작하기'));
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('영화의 순간을\n기록하세요'), findsOneWidget);
+
+    await tester.tap(find.text('시작하기'));
+    await tester.pumpAndSettle();
 
     // 검증 전에는 가입하기 비활성
     ElevatedButton submitButton() => tester.widget<ElevatedButton>(
@@ -71,8 +84,8 @@ void main() {
     await tester.tap(checkButtons.at(0));
     await tester.tap(checkButtons.at(1));
     await tester.pumpAndSettle();
-    expect(find.text('사용할 수 있는 닉네임입니다.'), findsOneWidget);
-    expect(find.text('사용할 수 있는 이메일입니다.'), findsOneWidget);
+    expect(find.text('사용 가능한 닉네임입니다.'), findsOneWidget);
+    expect(find.text('사용 가능한 이메일입니다.'), findsOneWidget);
     expect(submitButton().onPressed, isNotNull);
 
     await tester.ensureVisible(find.text('가입하기'));

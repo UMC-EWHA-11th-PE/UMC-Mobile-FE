@@ -25,8 +25,8 @@ class AppTheme {
   /// 헤더 높이입니다. (Figma: 64px)
   static const double appBarHeight = 64;
 
-  /// 입력창의 높이입니다. (Figma: 42px)
-  static const double inputHeight = 42;
+  /// 입력창의 높이입니다. (W6-01 Figma: 44px)
+  static const double inputHeight = 44;
 
   /// 마이페이지 통계 카드의 모서리 반경입니다. (1주차 Figma: 12px)
   static const double statRadius = 12;
@@ -68,6 +68,59 @@ class AppTheme {
   /// 평점 Dialog 다시 선택하기 — Manrope 700 / 14 / 100%
   static const TextStyle dialogTextAction = TextStyle(
     fontSize: 14,
+    height: 1,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+  );
+
+  /// 회원가입 헤더 제목 — Manrope 700 / 20 / 100%, #6750A4 (W6-01)
+  static const TextStyle signupAppBarTitle = TextStyle(
+    fontSize: 20,
+    height: 1,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+    color: AppColors.primary,
+  );
+
+  /// 회원가입 환영합니다! — Manrope 700 / 16 / 100%, #25232A (W6-01)
+  static const TextStyle signupWelcomeTitle = TextStyle(
+    fontSize: 16,
+    height: 1,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+    color: AppColors.dialogTitle,
+  );
+
+  /// 회원가입 안내 문구 — Manrope 400 / 14 / 100%, #25232A (W6-01)
+  static const TextStyle signupWelcomeBody = TextStyle(
+    fontSize: 14,
+    height: 1,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.dialogTitle,
+  );
+
+  /// 회원가입 필수 약관 문구 — Manrope 700 / 14 / 100%, #25232A (W6-01)
+  static const TextStyle signupTerms = TextStyle(
+    fontSize: 14,
+    height: 1,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+    color: AppColors.dialogTitle,
+  );
+
+  /// 공용 버튼(MovieLogButton) 글자 — Manrope 700 / 13 / 100% (W6-01)
+  static const TextStyle movieLogButton = TextStyle(
+    fontSize: 13,
+    height: 1,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+  );
+
+  /// 중복 확인 상태 안내 문구 — Manrope 700 / 12 / 100% (W6-01)
+  /// 색은 상태에 따라 위젯에서 입힙니다.
+  static const TextStyle checkStatus = TextStyle(
+    fontSize: 12,
     height: 1,
     letterSpacing: 0,
     fontWeight: FontWeight.w700,
@@ -240,15 +293,18 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         // 오류 상태(WidgetState.error)에서는 배경을 #FFDAD6으로 바꿉니다.
+        // 기본 배경 #FEFCF9 (W6-01)
         fillColor: WidgetStateColor.resolveWith(
           (states) => states.contains(WidgetState.error)
               ? colors.errorContainer
-              : colors.surfaceContainer,
+              : AppColors.inputBackground,
         ),
         isDense: true,
-        // Figma padding 8 / 16 / 8 / 16 + 테두리 1px = 42px.
-        // Flutter는 테두리를 패딩 안쪽에 그리므로 상하 9로 잡아야 높이 42가 됩니다.
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        // W6-01 높이 44 — 글자 줄 높이 24 + 상하 10
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
         // 플레이스홀더 — Manrope 500 / 16 #7A7582
         hintStyle: _textTheme.bodyLarge?.copyWith(
           fontWeight: FontWeight.w500,
@@ -256,14 +312,15 @@ class AppTheme {
         ),
         // 경고 문구 — Manrope 500 / 12 / 16 #B3261E, 입력창과 4px 간격(M3 기본값)
         errorStyle: _textTheme.bodySmall?.copyWith(color: colors.error),
-        border: _inputBorder(colors.outlineVariant),
-        enabledBorder: _inputBorder(colors.outlineVariant),
+        // 테두리 1px #D9D3E1 (W6-01)
+        border: _inputBorder(AppColors.inputBorder),
+        enabledBorder: _inputBorder(AppColors.inputBorder),
         focusedBorder: _inputBorder(colors.primary),
         errorBorder: _inputBorder(colors.error),
         focusedErrorBorder: _inputBorder(colors.error),
-        // 상태 아이콘 20x20 + 오른쪽 여백 16 (Figma padding-right)
+        // 상태 아이콘 20x20 + 오른쪽 여백 12 (W6-01)
         suffixIconConstraints: const BoxConstraints(
-          minWidth: 36,
+          minWidth: 32,
           minHeight: 20,
         ),
       ),
