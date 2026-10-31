@@ -73,8 +73,8 @@ class AppTheme {
     fontWeight: FontWeight.w700,
   );
 
-  /// 회원가입 헤더 제목 — Manrope 700 / 20 / 100%, #6750A4 (W6-01)
-  static const TextStyle signupAppBarTitle = TextStyle(
+  /// 회원가입·내가 등록한 평점 헤더 제목 — Manrope 700 / 20 / 100%, #6750A4 (W6-01, W6-02)
+  static const TextStyle appBarTitleBold = TextStyle(
     fontSize: 20,
     height: 1,
     letterSpacing: 0,
@@ -107,6 +107,45 @@ class AppTheme {
     letterSpacing: 0,
     fontWeight: FontWeight.w700,
     color: AppColors.dialogTitle,
+  );
+
+  /// 마이페이지 내가 등록한 평점 — Manrope 700 / 16 / 100%, #25232A (W6-ENTRY)
+  static const TextStyle entryCardTitle = TextStyle(
+    fontSize: 16,
+    height: 1,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+    color: AppColors.dialogTitle,
+  );
+
+  /// 평점 카드 영화 제목 — Manrope 700 / 17, 줄 영역 23 (W6-02)
+  static const TextStyle ratingCardTitle = TextStyle(
+    fontSize: 17,
+    height: 23 / 17,
+    leadingDistribution: TextLeadingDistribution.even,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+    color: AppColors.dialogTitle,
+  );
+
+  /// 평점 카드 별점 4 / 5 — Manrope 700 / 14, 줄 영역 19, #6750A4 (W6-02)
+  static const TextStyle ratingCardScore = TextStyle(
+    fontSize: 14,
+    height: 19 / 14,
+    leadingDistribution: TextLeadingDistribution.even,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w700,
+    color: AppColors.primary,
+  );
+
+  /// 평점 카드 후기·등록일 — Manrope 400 / 13, 줄 영역 18, #655F6C (W6-02)
+  static const TextStyle ratingCardBody = TextStyle(
+    fontSize: 13,
+    height: 18 / 13,
+    leadingDistribution: TextLeadingDistribution.even,
+    letterSpacing: 0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.retryDialogBody,
   );
 
   /// 공용 버튼(MovieLogButton) 글자 — Manrope 700 / 13 / 100% (W6-01)

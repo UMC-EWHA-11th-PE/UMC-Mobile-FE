@@ -119,7 +119,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Scaffold(
         appBar: CommonAppBar(
           title: '회원가입',
-          titleStyle: AppTheme.signupAppBarTitle,
+          titleStyle: AppTheme.appBarTitleBold,
           onBack: _backToStart,
         ),
         body: SafeArea(

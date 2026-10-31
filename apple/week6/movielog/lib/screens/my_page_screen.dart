@@ -46,10 +46,11 @@ class MyPageScreen extends StatelessWidget {
             _ProfileHeader(),
             SizedBox(height: 32),
             _ProfileStats(),
-            SizedBox(height: 32),
-            _FavoriteGenres(),
-            SizedBox(height: 32),
+            // W6-ENTRY — 통계 아래 26, 선호하는 장르 위 28
+            SizedBox(height: 26),
             _MyRatingsEntry(),
+            SizedBox(height: 28),
+            _FavoriteGenres(),
           ],
         ),
       ),
@@ -247,17 +248,74 @@ class _FavoriteGenres extends StatelessWidget {
   }
 }
 
-/// 내가 등록한 평점 진입 항목 — 하단 탭 없이 /my/ratings 화면을 위에 띄웁니다.
+/// 내가 등록한 평점 진입 카드 — 358 x 64, 배경 #FFFFFF, 테두리 1.5px #D6C9E8 (W6-ENTRY)
+/// 누르면 하단 탭 없이 /my/ratings 화면을 위에 띄웁니다.
 class _MyRatingsEntry extends StatelessWidget {
   const _MyRatingsEntry();
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text('내가 등록한 평점', style: Theme.of(context).textTheme.titleMedium),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => context.push('/my/ratings'),
+    final colors = Theme.of(context).colorScheme;
+
+    return Material(
+      color: AppColors.entryCardBackground,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.statRadius),
+        side: const BorderSide(color: AppColors.entryCardBorder, width: 1.5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/my/ratings'),
+        child: SizedBox(
+          height: 64,
+          child: Padding(
+            // 글자 왼쪽 19, 꺾쇠 오른쪽 18 (카드 바깥 기준)
+            padding: const EdgeInsets.only(left: 19, right: 18),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text('내가 등록한 평점', style: AppTheme.entryCardTitle),
+                ),
+                CustomPaint(
+                  size: const Size(8, 14),
+                  painter: _ChevronPainter(color: colors.primary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
+}
+
+/// 오른쪽 꺾쇠 — 8 x 14, 선 2.5px, 끝은 둥글게
+class _ChevronPainter extends CustomPainter {
+  const _ChevronPainter({required this.color});
+
+  final Color color;
+
+  static const _strokeWidth = 2.5;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 선 두께가 8 x 14 밖으로 나가지 않도록 절반만큼 안쪽에 그립니다.
+    const inset = _strokeWidth / 2;
+    final path = Path()
+      ..moveTo(inset, inset)
+      ..lineTo(size.width - inset, size.height / 2)
+      ..lineTo(inset, size.height - inset);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _strokeWidth
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ChevronPainter oldDelegate) => oldDelegate.color != color;
 }

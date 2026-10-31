@@ -109,11 +109,23 @@ class AppColors {
   /// 재시도 Dialog 아이콘 원 배경 (W5-01)
   static const Color retryIconBackground = Color(0xFFF0EBF8);
 
-  /// 재시도 Dialog 안내 문구 (W5-01)
+  /// 재시도 Dialog 안내 문구 (W5-01), 평점 카드 후기 (W6-02)
   static const Color retryDialogBody = Color(0xFF655F6C);
 
   /// 재시도 Dialog 취소 버튼 배경 (W5-01)
   static const Color retryCancelButton = Color(0xFFF4F0FA);
+
+  /// 평점 카드 배경 (W6-02)
+  static const Color ratingCardBackground = Color(0xFFFFFFFF);
+
+  /// 평점 카드 테두리 (W6-02)
+  static const Color ratingCardBorder = Color(0xFFD9D3E1);
+
+  /// 마이페이지 내가 등록한 평점 카드 배경 (W6-ENTRY)
+  static const Color entryCardBackground = Color(0xFFFFFFFF);
+
+  /// 마이페이지 내가 등록한 평점 카드 테두리 (W6-ENTRY)
+  static const Color entryCardBorder = Color(0xFFD6C9E8);
 
   /// 회원가입 입력창 배경 (W6-01)
   static const Color inputBackground = Color(0xFFFEFCF9);

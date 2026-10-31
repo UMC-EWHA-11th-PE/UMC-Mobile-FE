@@ -699,5 +699,31 @@ void main() {
         .ancestor(of: find.text('애니메이션'), matching: find.byType(Container))
         .first;
     expect(tester.getSize(chip).height, 32);
+
+    // 내가 등록한 평점 카드 358 x 64 — 통계 아래 26, 선호하는 장르 위 28 (W6-ENTRY)
+    final entry = find
+        .ancestor(of: find.text('내가 등록한 평점'), matching: find.byType(Material))
+        .first;
+    expect(tester.getSize(entry), const Size(358, 64));
+    expect(tester.getTopLeft(entry).dy - tester.getBottomLeft(statCard).dy, 26);
+    expect(
+      tester.getTopLeft(find.text('선호하는 장르')).dy -
+          tester.getBottomLeft(entry).dy,
+      28,
+    );
+    // 글자 왼쪽 19, 꺾쇠 8 x 14 오른쪽 18
+    expect(
+      tester.getTopLeft(find.text('내가 등록한 평점')).dx -
+          tester.getTopLeft(entry).dx,
+      19,
+    );
+    final chevron = find.descendant(
+      of: entry,
+      matching: find.byWidgetPredicate(
+        (widget) => widget is CustomPaint && widget.size == const Size(8, 14),
+      ),
+    );
+    expect(tester.getSize(chevron), const Size(8, 14));
+    expect(tester.getTopRight(entry).dx - tester.getTopRight(chevron).dx, 18);
   });
 }

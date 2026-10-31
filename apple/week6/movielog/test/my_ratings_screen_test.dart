@@ -43,14 +43,53 @@ void main() {
     gate.complete();
     await tester.pumpAndSettle();
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('학습용 memberId 1의 샘플 평점입니다.'), findsOneWidget);
     expect(find.text('별빛 아래 우리'), findsOneWidget);
     expect(find.text('마션 레스큐'), findsOneWidget);
-    expect(find.text('4.0'), findsOneWidget);
-    expect(find.text('5.0'), findsOneWidget);
+    expect(find.text('별점 4 / 5'), findsOneWidget);
+    expect(find.text('별점 5 / 5'), findsOneWidget);
     expect(find.text('2026.09.06'), findsNWidgets(2));
-    // comment가 null인 평점은 한줄평을 그리지 않음
+    // comment가 null인 평점은 후기를 그리지 않음
     expect(find.text('최고의 영화!'), findsOneWidget);
+    expect(find.text('포스터 정보 없음'), findsNothing);
+  });
+
+  testWidgets('평점 카드가 W6-02 Figma 크기를 따른다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      _app(
+        fakeRatingApiService(
+          ratings: [
+            fakeRatingJson(ratingId: 2, movieId: 680, score: 4),
+            fakeRatingJson(ratingId: 1, movieId: 13, score: 3, comment: null),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 카드 350 x 156, 헤더(64) 아래 32, 왼쪽 20
+    final card = find
+        .ancestor(of: find.text('영화 #680'), matching: find.byType(Container))
+        .last;
+    expect(tester.getSize(card), const Size(350, 156));
+    expect(tester.getTopLeft(card), const Offset(20, 64 + 32));
+
+    // 포스터 82 x 124, 카드 안쪽 16
+    final poster = find.byKey(const ValueKey('rating-poster-placeholder'));
+    expect(tester.getSize(poster.first), const Size(82, 124));
+    expect(
+      tester.getTopLeft(poster.first) - tester.getTopLeft(card),
+      const Offset(16, 16),
+    );
+
+    // 제목 → 별점 → 후기 위치 (Figma top 127 / 160 / 191, left 134)
+    final top = tester.getTopLeft(card).dy;
+    expect(tester.getTopLeft(find.text('영화 #680')), Offset(134, top + 31));
+    expect(tester.getTopLeft(find.text('별점 4 / 5')).dy, top + 64);
+    expect(tester.getTopLeft(find.text('최고의 영화!')).dy, top + 95);
   });
 
   testWidgets('Empty: 평점이 없으면 안내 문구', (tester) async {
@@ -58,7 +97,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('아직 등록된 평점이 없습니다.'), findsOneWidget);
-    expect(find.text('학습용 memberId 1의 샘플 평점입니다.'), findsOneWidget);
   });
 
   testWidgets('Error: 404 안내와 다시 시도', (tester) async {
@@ -82,16 +120,30 @@ void main() {
     expect(requests, hasLength(2));
   });
 
-  testWidgets('TMDB에서 못 찾은 영화는 placeholder와 movieId로 평점을 남긴다', (tester) async {
+  testWidgets('TMDB에서 못 찾은 영화는 영화 #movieId와 placeholder로 평점을 남긴다', (
+    tester,
+  ) async {
     await tester.pumpWidget(
-      _app(fakeRatingApiService(ratings: [fakeRatingJson(movieId: 999999)])),
+      _app(
+        fakeRatingApiService(
+          ratings: [
+            fakeRatingJson(ratingId: 2, movieId: 999999),
+            fakeRatingJson(ratingId: 1, movieId: 13, score: 3, comment: null),
+          ],
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('영화 정보를 찾을 수 없어요'), findsOneWidget);
-    expect(find.text('movieId 999999'), findsOneWidget);
-    expect(find.byIcon(Icons.image_not_supported_outlined), findsOneWidget);
-    expect(find.text('일부 영화 정보를 가져오지 못해 제목·포스터를 대신 표시합니다.'), findsOneWidget);
+    expect(find.text('영화 #999999'), findsOneWidget);
+    expect(find.text('영화 #13'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('rating-poster-placeholder')),
+      findsNWidgets(2),
+    );
+    // 후기가 있으면 후기, 후기도 없으면 포스터 정보 없음
     expect(find.text('최고의 영화!'), findsOneWidget);
+    expect(find.text('포스터 정보 없음'), findsOneWidget);
+    expect(find.text('별점 3 / 5'), findsOneWidget);
   });
 }
