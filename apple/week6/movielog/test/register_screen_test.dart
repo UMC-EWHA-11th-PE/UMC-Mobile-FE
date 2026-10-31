@@ -114,6 +114,35 @@ void main() {
     await tester.enterText(_nicknameField, '무비러버');
     await tester.pump();
     expect(find.text('이미 사용 중인 닉네임입니다.'), findsOneWidget);
+    // 서버에 다시 묻지 않고 버튼도 바로 비활성
+    expect(_checkButton(tester, 0).onPressed, isNull);
+    expect(requests, hasLength(1));
+  });
+
+  testWidgets('이메일도 중복값을 지웠다가 같은 값을 입력하면 요청 없이 바로 에러·버튼 비활성', (tester) async {
+    final requests = <String>[];
+    await _pumpRegister(
+      tester,
+      fakeMemberCheckService(taken: {'movie@umc.com'}, requests: requests),
+    );
+
+    await tester.enterText(_emailField, 'movie@umc.com');
+    await tester.pump();
+    await tester.tap(find.text('중복 확인').last);
+    await tester.pumpAndSettle();
+    expect(find.text('이미 사용 중인 이메일입니다.'), findsOneWidget);
+    expect(_checkButton(tester, 1).onPressed, isNull);
+
+    // 한 글자 지우는 동안에는 에러가 사라지고 다시 확인할 수 있음
+    await tester.enterText(_emailField, 'movie@umc.co');
+    await tester.pump();
+    expect(find.text('이미 사용 중인 이메일입니다.'), findsNothing);
+    expect(_checkButton(tester, 1).onPressed, isNotNull);
+
+    await tester.enterText(_emailField, 'movie@umc.com');
+    await tester.pump();
+    expect(find.text('이미 사용 중인 이메일입니다.'), findsOneWidget);
+    expect(_checkButton(tester, 1).onPressed, isNull);
     expect(requests, hasLength(1));
   });
 
