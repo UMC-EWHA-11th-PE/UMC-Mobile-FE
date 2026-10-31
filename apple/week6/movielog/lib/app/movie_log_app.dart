@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/network/api_client.dart';
+import '../core/network/movie_log_client.dart';
 import '../core/network/tmdb_client.dart';
 import '../data/services/member_check_service.dart';
 import '../data/services/rating_api_service.dart';
@@ -30,6 +30,9 @@ class MovieLogApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // 여러 화면(Route)이 함께 쓰는 객체는 MaterialApp.router 위에 등록합니다.
     // Service는 상태가 없으므로 인스턴스 하나를 모든 ViewModel이 공유합니다.
+    // 회원 중복 확인과 평점 조회는 같은 워크북 백엔드라 Dio 하나를 함께 씁니다.
+    final movieLogClient = createMovieLogClient();
+
     return MultiProvider(
       providers: [
         Provider<TmdbMovieService>(
@@ -38,11 +41,10 @@ class MovieLogApp extends StatelessWidget {
         ),
         Provider<MemberCheckService>(
           create: (_) =>
-              memberCheckService ?? MemberCheckService(createApiClient()),
+              memberCheckService ?? MemberCheckService(movieLogClient),
         ),
         Provider<RatingApiService>(
-          create: (_) =>
-              ratingApiService ?? RatingApiService(createApiClient()),
+          create: (_) => ratingApiService ?? RatingApiService(movieLogClient),
         ),
       ],
       child: MaterialApp.router(

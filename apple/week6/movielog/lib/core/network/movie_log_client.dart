@@ -1,18 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import 'api_config.dart';
-
-/// 자체 movie 서버 전용 Dio Client를 만듭니다.
-/// TMDB와 인증 방식이 달라 `createTmdbClient()`와 따로 둡니다.
+/// 워크북 자체 백엔드 전용 Dio Client를 만듭니다.
+///
+/// TMDB와 baseUrl·헤더가 달라 `createTmdbClient()`와 절대 합치지 않습니다.
 /// 경로에 버전(/v5)을 붙이는 것은 각 Service가 담당합니다.
-Dio createApiClient() {
+Dio createMovieLogClient() {
   final dio = Dio(
     BaseOptions(
-      baseUrl: ApiConfig.baseUrl,
+      baseUrl: 'https://workbook.devnoco.com',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
-      headers: {'accept': 'application/json'},
     ),
   );
 

@@ -5,7 +5,7 @@ import '../config/tmdb_config.dart';
 import 'tmdb_logging_interceptor.dart';
 
 /// TMDB 전용 Dio Client를 만듭니다.
-/// 자체 movie 서버(`ApiConfig`)와 인증 방식이 달라 Client를 따로 둡니다.
+/// 워크북 자체 백엔드(`createMovieLogClient()`)와 baseUrl·헤더가 달라 Client를 따로 둡니다.
 Dio createTmdbClient() {
   final dio = Dio(
     BaseOptions(
