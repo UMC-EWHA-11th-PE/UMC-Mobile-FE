@@ -1,58 +1,18 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:movielog/data/services/member_check_service.dart';
 import 'package:movielog/view_models/sign_up_view_model.dart';
 
-/// 서버 없이 v5 중복 체크 응답을 흉내 내는 [MemberCheckService]를 만듭니다.
-///
-/// - [taken]에 든 닉네임·이메일이면 { "available": false }, 아니면 true
-/// - [fail]이 true면 연결 오류(DioException)
-/// - [gate]가 있으면 그 Future가 끝날 때까지 응답을 미룸 — 늦은 응답 확인용
-/// - [requests]에 보낸 요청 path를 순서대로 기록
-MemberCheckService _fakeService({
-  Set<String> taken = const {},
-  bool fail = false,
-  Future<void>? gate,
-  List<String>? requests,
-}) {
-  final dio = Dio(BaseOptions(baseUrl: 'http://localhost:8080'))
-    ..interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) async {
-          requests?.add(options.path);
-          if (gate != null) await gate;
-
-          if (fail) {
-            return handler.reject(
-              DioException.connectionError(
-                requestOptions: options,
-                reason: '테스트용 연결 실패',
-              ),
-            );
-          }
-
-          final value = Uri.decodeComponent(options.path.split('/').last);
-          handler.resolve(
-            Response(
-              requestOptions: options,
-              statusCode: 200,
-              data: {'available': !taken.contains(value)},
-            ),
-          );
-        },
-      ),
-    );
-  return MemberCheckService(dio);
-}
+import 'fake_member_check.dart';
 
 void main() {
   group('닉네임 중복 확인', () {
     test('사용 가능하면 available, 에러 문구 없음', () async {
       final requests = <String>[];
-      final viewModel = SignUpViewModel(_fakeService(requests: requests));
+      final viewModel = SignUpViewModel(
+        fakeMemberCheckService(requests: requests),
+      );
 
       viewModel.onNicknameChanged(' 무비러버 ');
       await viewModel.checkNickname(' 무비러버 ');
@@ -65,7 +25,9 @@ void main() {
 
     test('요청 중에는 checking이고 버튼을 다시 누를 수 없다', () async {
       final gate = Completer<void>();
-      final viewModel = SignUpViewModel(_fakeService(gate: gate.future));
+      final viewModel = SignUpViewModel(
+        fakeMemberCheckService(gate: gate.future),
+      );
 
       viewModel.onNicknameChanged('무비러버');
       final pending = viewModel.checkNickname('무비러버');
@@ -79,7 +41,9 @@ void main() {
     });
 
     test('중복이면 duplicated와 에러 문구, 버튼 비활성', () async {
-      final viewModel = SignUpViewModel(_fakeService(taken: {'무비러버'}));
+      final viewModel = SignUpViewModel(
+        fakeMemberCheckService(taken: {'무비러버'}),
+      );
 
       viewModel.onNicknameChanged('무비러버');
       await viewModel.checkNickname('무비러버');
@@ -90,7 +54,7 @@ void main() {
     });
 
     test('통신이 실패하면 error — available: false와 구분한다', () async {
-      final viewModel = SignUpViewModel(_fakeService(fail: true));
+      final viewModel = SignUpViewModel(fakeMemberCheckService(fail: true));
 
       viewModel.onNicknameChanged('무비러버');
       await viewModel.checkNickname('무비러버');
@@ -104,7 +68,7 @@ void main() {
     test('입력을 바꾸면 이전 결과가 사라지고, 중복값을 다시 입력하면 API 없이 바로 에러', () async {
       final requests = <String>[];
       final viewModel = SignUpViewModel(
-        _fakeService(taken: {'무비러버'}, requests: requests),
+        fakeMemberCheckService(taken: {'무비러버'}, requests: requests),
       );
 
       viewModel.onNicknameChanged('무비러버');
@@ -122,7 +86,7 @@ void main() {
     });
 
     test('사용 가능 확인 후 입력을 바꾸면 idle로 돌아간다', () async {
-      final viewModel = SignUpViewModel(_fakeService());
+      final viewModel = SignUpViewModel(fakeMemberCheckService());
 
       viewModel.onNicknameChanged('무비러버');
       await viewModel.checkNickname('무비러버');
@@ -134,7 +98,7 @@ void main() {
     test('응답을 기다리는 중 입력을 바꾸면 늦은 응답을 무시한다', () async {
       final gate = Completer<void>();
       final viewModel = SignUpViewModel(
-        _fakeService(taken: {'무비러버'}, gate: gate.future),
+        fakeMemberCheckService(taken: {'무비러버'}, gate: gate.future),
       );
 
       viewModel.onNicknameChanged('무비러버');
@@ -149,7 +113,9 @@ void main() {
 
     test('빈 값이나 현재 입력과 다른 값은 요청하지 않는다', () async {
       final requests = <String>[];
-      final viewModel = SignUpViewModel(_fakeService(requests: requests));
+      final viewModel = SignUpViewModel(
+        fakeMemberCheckService(requests: requests),
+      );
 
       viewModel.onNicknameChanged('   ');
       await viewModel.checkNickname('   ');
@@ -162,7 +128,9 @@ void main() {
 
     test('응답 전에 dispose되면 결과를 반영하지 않는다', () async {
       final gate = Completer<void>();
-      final viewModel = SignUpViewModel(_fakeService(gate: gate.future));
+      final viewModel = SignUpViewModel(
+        fakeMemberCheckService(gate: gate.future),
+      );
 
       viewModel.onNicknameChanged('무비러버');
       final pending = viewModel.checkNickname('무비러버');
@@ -178,7 +146,10 @@ void main() {
     test('이메일은 /v5/members/email 경로로 확인하고 중복이면 에러 문구', () async {
       final requests = <String>[];
       final viewModel = SignUpViewModel(
-        _fakeService(taken: {'movie+log@umc.com'}, requests: requests),
+        fakeMemberCheckService(
+          taken: {'movie+log@umc.com'},
+          requests: requests,
+        ),
       );
 
       viewModel.onEmailChanged('movie+log@umc.com');
@@ -191,7 +162,9 @@ void main() {
     });
 
     test('닉네임 결과와 이메일 결과는 서로 영향을 주지 않는다', () async {
-      final viewModel = SignUpViewModel(_fakeService(taken: {'무비러버'}));
+      final viewModel = SignUpViewModel(
+        fakeMemberCheckService(taken: {'무비러버'}),
+      );
 
       viewModel.onNicknameChanged('무비러버');
       viewModel.onEmailChanged('new@umc.com');

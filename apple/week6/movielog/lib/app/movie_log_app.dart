@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/network/api_client.dart';
 import '../core/network/tmdb_client.dart';
+import '../data/services/member_check_service.dart';
 import '../data/services/tmdb_movie_service.dart';
 import '../router/app_router.dart';
 import '../theme/app_theme.dart';
 
 class MovieLogApp extends StatelessWidget {
-  const MovieLogApp({super.key, this.tmdbMovieService});
+  const MovieLogApp({
+    super.key,
+    this.tmdbMovieService,
+    this.memberCheckService,
+  });
 
   /// 테스트에서 가짜 TMDB 응답을 쓰기 위해 바꿔 넣을 수 있습니다. null이면 실제 TMDB를 호출합니다.
   final TmdbMovieService? tmdbMovieService;
+
+  /// 테스트에서 가짜 중복 확인 응답을 쓰기 위해 바꿔 넣을 수 있습니다. null이면 자체 서버를 호출합니다.
+  final MemberCheckService? memberCheckService;
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +30,10 @@ class MovieLogApp extends StatelessWidget {
         Provider<TmdbMovieService>(
           create: (_) =>
               tmdbMovieService ?? TmdbMovieService(createTmdbClient()),
+        ),
+        Provider<MemberCheckService>(
+          create: (_) =>
+              memberCheckService ?? MemberCheckService(createApiClient()),
         ),
       ],
       child: MaterialApp.router(

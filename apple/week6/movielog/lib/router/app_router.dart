@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../data/services/member_check_service.dart';
 import '../data/services/tmdb_movie_service.dart';
 import '../models/movie_detail.dart';
 import '../screens/home_screen.dart';
@@ -13,6 +14,7 @@ import '../screens/start_screen.dart';
 import '../view_models/movie_detail_view_model.dart';
 import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
+import '../view_models/sign_up_view_model.dart';
 
 /// 앱에서 사용하는 Route를 한곳에서 관리하는 클래스
 class AppRouter {
@@ -26,7 +28,11 @@ class AppRouter {
       GoRoute(path: '/start', builder: (context, state) => const StartScreen()),
       GoRoute(
         path: '/register',
-        builder: (context, state) => const RegisterScreen(),
+        builder: (context, state) => ChangeNotifierProvider<SignUpViewModel>(
+          create: (context) =>
+              SignUpViewModel(context.read<MemberCheckService>()),
+          child: const RegisterScreen(),
+        ),
       ),
       // 영화 상세 — 하단 탭 없이 전체 화면으로 표시 (예: /movies/969681)
       // 경로의 movieId는 TMDB id이고, ViewModel이 TMDB 상세를 불러옵니다.

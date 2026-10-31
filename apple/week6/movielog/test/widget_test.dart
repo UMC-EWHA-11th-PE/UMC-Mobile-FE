@@ -10,12 +10,13 @@ import 'package:movielog/router/app_router.dart';
 import 'package:movielog/widgets/movie_card.dart';
 
 import 'fake_api.dart';
+import 'fake_member_check.dart';
 import 'fake_tmdb.dart';
 
 void main() {
   setUp(() {
-    // 회원가입이 서버를 호출하므로 가짜 서버로 대체
-    // (영화 목록은 MovieLogApp에 fakeTmdbService를 넣어 TMDB 대신 사용)
+    // 평점 조회(RatingService)가 서버를 호출하므로 가짜 서버로 대체
+    // (회원가입 중복 확인·영화 목록은 MovieLogApp에 가짜 Service를 넣어 사용)
     ApiConfig.client = fakeApiClient();
     // AppRouter.router는 static이라 테스트마다 시작 화면으로 되돌림
     AppRouter.router.go('/start');
@@ -31,7 +32,12 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+    await tester.pumpWidget(
+      MovieLogApp(
+        tmdbMovieService: fakeTmdbService(),
+        memberCheckService: fakeMemberCheckService(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // 시작 화면 (1주차 W1-00)
@@ -53,7 +59,7 @@ void main() {
     );
     expect(submitButton().onPressed, isNull);
 
-    // 닉네임·이메일·비밀번호 입력 + 약관 동의 → 가입하기 활성
+    // 닉네임·이메일·비밀번호 입력 + 약관 동의
     final fields = find.byType(TextFormField);
     await tester.enterText(fields.at(0), '밍고');
     await tester.enterText(fields.at(1), 'mingo@example.com');
@@ -61,6 +67,16 @@ void main() {
     await tester.ensureVisible(find.text('필수 약관에 동의합니다'));
     await tester.tap(find.text('필수 약관에 동의합니다'));
     await tester.pumpAndSettle();
+    // 중복 확인 전에는 아직 비활성
+    expect(submitButton().onPressed, isNull);
+
+    // 닉네임·이메일 중복 확인 → 가입하기 활성
+    final checkButtons = find.text('중복 확인');
+    await tester.tap(checkButtons.at(0));
+    await tester.tap(checkButtons.at(1));
+    await tester.pumpAndSettle();
+    expect(find.text('사용할 수 있는 닉네임입니다.'), findsOneWidget);
+    expect(find.text('사용할 수 있는 이메일입니다.'), findsOneWidget);
     expect(submitButton().onPressed, isNotNull);
 
     await tester.ensureVisible(find.text('가입하기'));

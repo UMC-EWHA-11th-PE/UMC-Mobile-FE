@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import '../data/services/member_service.dart';
 import '../theme/app_theme.dart';
+import '../view_models/sign_up_view_model.dart';
 import '../widgets/common_app_bar.dart';
+import '../widgets/movielog_button.dart';
 
 /// 입력값을 검사해 오류 메시지를 돌려주는 함수 타입입니다. 통과하면 null입니다.
 typedef FieldValidator = String? Function(String? value);
@@ -20,6 +22,9 @@ typedef FieldValidator = String? Function(String? value);
 /// - [_WelcomeMessage] 환영 문구
 /// - [_SignupFields] 닉네임·이메일·비밀번호 입력창 묶음
 /// - [_SignupFooter] 약관 동의, 가입하기 버튼, 로그인 링크
+///
+/// 6주차 — 형식 검사는 validator가, 서버 중복 여부는 [SignUpViewModel]이 담당합니다.
+/// 두 결과를 함께 보여주고, 닉네임·이메일이 모두 사용 가능해야 가입하기가 켜집니다.
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -42,14 +47,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // Step 2. 약관 동의 여부
   bool _agreedToTerms = false;
 
-  // 5주차 — 가입하기를 누르면 서버에 닉네임·이메일 중복을 확인합니다.
-  final _memberService = MemberService();
-  bool _isChecking = false;
-
-  /// 서버가 이미 사용 중이라고 알려준 값 — 입력이 이 값과 같으면 오류를 보여줍니다.
-  String? _takenNickname;
-  String? _takenEmail;
-
   @override
   void dispose() {
     // Step 2. State가 사라질 때 리소스를 반드시 해제합니다.
@@ -62,13 +59,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // ---------------------------------------------------------------------------
   // Validator — TextFormField와 버튼 활성화 판단에서 함께 사용합니다.
+  // 형식만 검사하고, 서버 중복 여부는 SignUpViewModel의 errorText로 보여줍니다.
   // ---------------------------------------------------------------------------
 
   String? _validateNickname(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return '닉네임을 입력해주세요.';
     if (text.length < 2) return '닉네임은 2자 이상이어야 합니다.';
-    if (text == _takenNickname) return '이미 사용 중인 닉네임입니다.';
     return null;
   }
 
@@ -78,7 +75,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return '이메일을 입력해주세요.';
     if (!_emailPattern.hasMatch(text)) return '올바른 이메일 형식이 아닙니다.';
-    if (text == _takenEmail) return '이미 사용 중인 이메일입니다.';
     return null;
   }
 
@@ -89,51 +85,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return null;
   }
 
-  /// 세 입력이 모두 유효하고 약관에 동의했을 때만 가입하기 버튼을 켭니다.
-  bool get _canSubmit =>
+  /// 세 입력이 모두 유효하고, 닉네임·이메일 중복 확인을 통과하고,
+  /// 약관에 동의했을 때만 가입하기 버튼을 켭니다.
+  bool _canSubmit(SignUpViewModel viewModel) =>
       _validateNickname(_nicknameController.text) == null &&
       _validateEmail(_emailController.text) == null &&
       _validatePassword(_passwordController.text) == null &&
-      _agreedToTerms &&
-      !_isChecking;
+      viewModel.nicknameCheckStatus == CheckStatus.available &&
+      viewModel.emailCheckStatus == CheckStatus.available &&
+      _agreedToTerms;
 
-  /// 가입하기 — Form 전체를 다시 검증하고, 서버에서 닉네임·이메일 중복을 확인한 뒤
-  /// 모두 사용 가능할 때만 홈으로 이동합니다.
+  /// 가입하기 — Form 전체를 다시 검증한 뒤 홈으로 이동합니다.
+  /// v5에는 회원가입 API가 없어 실제 계정은 만들지 않습니다.
   /// go로 이동해 회원가입 화면을 스택에서 빼므로 홈에서 뒤로 돌아오지 않습니다.
-  Future<void> _submit() async {
+  void _submit() {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
-
-    final nickname = _nicknameController.text.trim();
-    final email = _emailController.text.trim();
-
-    setState(() => _isChecking = true);
-    try {
-      final results = await Future.wait([
-        _memberService.isNicknameAvailable(nickname),
-        _memberService.isEmailAvailable(email),
-      ]);
-      if (!mounted) return;
-
-      final nicknameAvailable = results[0];
-      final emailAvailable = results[1];
-      if (!nicknameAvailable || !emailAvailable) {
-        setState(() {
-          if (!nicknameAvailable) _takenNickname = nickname;
-          if (!emailAvailable) _takenEmail = email;
-        });
-        _formKey.currentState!.validate();
-        return;
-      }
-
-      context.go('/home');
-    } on MemberCheckException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
-    } finally {
-      if (mounted) setState(() => _isChecking = false);
-    }
+    context.go('/home');
   }
 
   @override
@@ -163,37 +131,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     // Expanded를 스크롤 뷰 안에서 쓰기 위해 IntrinsicHeight로 높이를 확정합니다.
                     child: IntrinsicHeight(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const _WelcomeMessage(),
-                          const SizedBox(height: 32),
-                          _SignupFields(
-                            nicknameController: _nicknameController,
-                            emailController: _emailController,
-                            passwordController: _passwordController,
-                            passwordFocusNode: _passwordFocusNode,
-                            validateNickname: _validateNickname,
-                            validateEmail: _validateEmail,
-                            validatePassword: _validatePassword,
-                            // 입력이 바뀔 때마다 버튼 활성화와 상태 아이콘을 다시 계산합니다.
-                            onChanged: () => setState(() {}),
-                            onPasswordSubmitted: _canSubmit ? _submit : null,
-                          ),
-                          const SizedBox(height: 32),
-                          // 하단 컨테이너(Fill)는 남은 공간을 채우고 내용은 아래에 붙입니다.
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              child: _SignupFooter(
-                                agreedToTerms: _agreedToTerms,
-                                onAgreedChanged: (value) =>
-                                    setState(() => _agreedToTerms = value),
-                                onSubmit: _canSubmit ? _submit : null,
+                      // 중복 확인 상태가 바뀌면 입력창 에러와 가입하기 버튼을 다시 그립니다.
+                      child: Consumer<SignUpViewModel>(
+                        builder: (context, viewModel, child) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const _WelcomeMessage(),
+                            const SizedBox(height: 32),
+                            _SignupFields(
+                              viewModel: viewModel,
+                              nicknameController: _nicknameController,
+                              emailController: _emailController,
+                              passwordController: _passwordController,
+                              passwordFocusNode: _passwordFocusNode,
+                              validateNickname: _validateNickname,
+                              validateEmail: _validateEmail,
+                              validatePassword: _validatePassword,
+                              // 입력이 바뀔 때마다 버튼 활성화와 상태 아이콘을 다시 계산합니다.
+                              onChanged: () => setState(() {}),
+                              onPasswordSubmitted: _canSubmit(viewModel)
+                                  ? _submit
+                                  : null,
+                            ),
+                            const SizedBox(height: 32),
+                            // 하단 컨테이너(Fill)는 남은 공간을 채우고 내용은 아래에 붙입니다.
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: _SignupFooter(
+                                  agreedToTerms: _agreedToTerms,
+                                  onAgreedChanged: (value) =>
+                                      setState(() => _agreedToTerms = value),
+                                  onSubmit: _canSubmit(viewModel)
+                                      ? _submit
+                                      : null,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -230,6 +206,7 @@ class _WelcomeMessage extends StatelessWidget {
 /// 입력창 묶음 — 닉네임·이메일·비밀번호, gap 16
 class _SignupFields extends StatelessWidget {
   const _SignupFields({
+    required this.viewModel,
     required this.nicknameController,
     required this.emailController,
     required this.passwordController,
@@ -241,6 +218,7 @@ class _SignupFields extends StatelessWidget {
     required this.onPasswordSubmitted,
   });
 
+  final SignUpViewModel viewModel;
   final TextEditingController nicknameController;
   final TextEditingController emailController;
   final TextEditingController passwordController;
@@ -254,12 +232,23 @@ class _SignupFields extends StatelessWidget {
   final VoidCallback? onPasswordSubmitted;
 
   /// 비어 있으면 suffixIcon 자리를 아예 만들지 않습니다. (W2-01)
-  Widget? _statusIcon(String value, FieldValidator validator) =>
-      value.isEmpty ? null : _StatusIcon(value: value, validator: validator);
+  /// [serverErrorText]가 있으면 형식이 맞아도 오류 아이콘을 보여줍니다.
+  Widget? _statusIcon(
+    String value,
+    FieldValidator validator, {
+    String? serverErrorText,
+  }) => value.isEmpty
+      ? null
+      : _StatusIcon(
+          hasError: validator(value) != null || serverErrorText != null,
+        );
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    // 사용 가능 안내 — 에러 문구와 같은 자리·크기, primary 색
+    final availableStyle = textTheme.bodySmall?.copyWith(color: colors.primary);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -267,17 +256,37 @@ class _SignupFields extends StatelessWidget {
         // Step 3. 닉네임
         _LabeledField(
           label: '닉네임',
-          child: TextFormField(
-            controller: nicknameController,
-            validator: validateNickname,
-            onChanged: (_) => onChanged(),
-            textInputAction: TextInputAction.next,
-            style: textTheme.bodyLarge,
-            decoration: InputDecoration(
-              hintText: '닉네임을 입력해주세요',
-              suffixIcon: _statusIcon(
-                nicknameController.text,
-                validateNickname,
+          child: _DuplicateCheckRow(
+            status: viewModel.nicknameCheckStatus,
+            // 형식이 맞고 ViewModel이 허락할 때만 중복 확인을 누를 수 있습니다.
+            onCheck:
+                validateNickname(nicknameController.text) == null &&
+                    viewModel.canCheckNickname
+                ? () => viewModel.checkNickname(nicknameController.text)
+                : null,
+            field: TextFormField(
+              controller: nicknameController,
+              validator: validateNickname,
+              onChanged: (value) {
+                viewModel.onNicknameChanged(value);
+                onChanged();
+              },
+              textInputAction: TextInputAction.next,
+              style: textTheme.bodyLarge,
+              decoration: InputDecoration(
+                hintText: '닉네임을 입력해주세요',
+                // validator가 통과해도 서버 중복이면 에러 상태로 보입니다.
+                errorText: viewModel.nicknameErrorText,
+                helperText:
+                    viewModel.nicknameCheckStatus == CheckStatus.available
+                    ? '사용할 수 있는 닉네임입니다.'
+                    : null,
+                helperStyle: availableStyle,
+                suffixIcon: _statusIcon(
+                  nicknameController.text,
+                  validateNickname,
+                  serverErrorText: viewModel.nicknameErrorText,
+                ),
               ),
             ),
           ),
@@ -286,17 +295,37 @@ class _SignupFields extends StatelessWidget {
         // 이메일
         _LabeledField(
           label: '이메일',
-          child: TextFormField(
-            controller: emailController,
-            validator: validateEmail,
-            onChanged: (_) => onChanged(),
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            onFieldSubmitted: (_) => passwordFocusNode.requestFocus(),
-            style: textTheme.bodyLarge,
-            decoration: InputDecoration(
-              hintText: '이메일 주소를 입력해주세요',
-              suffixIcon: _statusIcon(emailController.text, validateEmail),
+          child: _DuplicateCheckRow(
+            status: viewModel.emailCheckStatus,
+            onCheck:
+                validateEmail(emailController.text) == null &&
+                    viewModel.canCheckEmail
+                ? () => viewModel.checkEmail(emailController.text)
+                : null,
+            field: TextFormField(
+              controller: emailController,
+              validator: validateEmail,
+              onChanged: (value) {
+                viewModel.onEmailChanged(value);
+                onChanged();
+              },
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              onFieldSubmitted: (_) => passwordFocusNode.requestFocus(),
+              style: textTheme.bodyLarge,
+              decoration: InputDecoration(
+                hintText: '이메일 주소를 입력해주세요',
+                errorText: viewModel.emailErrorText,
+                helperText: viewModel.emailCheckStatus == CheckStatus.available
+                    ? '사용할 수 있는 이메일입니다.'
+                    : null,
+                helperStyle: availableStyle,
+                suffixIcon: _statusIcon(
+                  emailController.text,
+                  validateEmail,
+                  serverErrorText: viewModel.emailErrorText,
+                ),
+              ),
             ),
           ),
         ),
@@ -347,18 +376,51 @@ class _LabeledField extends StatelessWidget {
   }
 }
 
+/// 입력창 오른쪽에 중복 확인 버튼을 나란히 둡니다.
+///
+/// 버튼은 입력창 옆 좁은 자리라 width 없이 글자 길이만큼만 차지하고,
+/// 입력창(Expanded)이 남은 너비를 씁니다.
+class _DuplicateCheckRow extends StatelessWidget {
+  const _DuplicateCheckRow({
+    required this.field,
+    required this.status,
+    required this.onCheck,
+  });
+
+  final Widget field;
+  final CheckStatus status;
+
+  /// null이면 중복 확인 버튼이 비활성 상태로 그려집니다.
+  final VoidCallback? onCheck;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      // 아래에 에러·안내 문구가 붙어도 버튼은 입력창 높이에 맞춰 위에 둡니다.
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: field),
+        const SizedBox(width: 8),
+        MovieLogButton(
+          label: '중복 확인',
+          isLoading: status == CheckStatus.checking,
+          onPressed: onCheck,
+        ),
+      ],
+    );
+  }
+}
+
 /// 입력 상태에 따라 오른쪽에 붙는 20x20 아이콘입니다.
 /// 오류면 ! (W2-02), 통과하면 체크(W2-03)
 class _StatusIcon extends StatelessWidget {
-  const _StatusIcon({required this.value, required this.validator});
+  const _StatusIcon({required this.hasError});
 
-  final String value;
-  final FieldValidator validator;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final hasError = validator(value) != null;
 
     return Padding(
       // 오른쪽 여백 16 (Figma padding-right)
