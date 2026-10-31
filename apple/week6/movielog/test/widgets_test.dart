@@ -238,5 +238,29 @@ void main() {
       expect(await widthOf(120), 120);
       expect(tester.getSize(find.byType(MovieLogButton)).height, 44);
     });
+
+    testWidgets('width가 null이면 Row 안 입력창 옆에서 글자 길이만큼만 차지한다', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: Row(
+              children: [
+                const Expanded(child: TextField()),
+                const SizedBox(width: 8),
+                MovieLogButton(label: '중복 확인', onPressed: () {}),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final buttonWidth = tester.getSize(find.byType(MovieLogButton)).width;
+      expect(buttonWidth, lessThan(200));
+      expect(
+        tester.getSize(find.byType(TextField)).width,
+        800 - 8 - buttonWidth,
+      );
+    });
   });
 }

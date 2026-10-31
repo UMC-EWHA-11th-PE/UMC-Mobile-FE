@@ -8,9 +8,10 @@ import 'package:flutter/material.dart';
 /// - 비활성: [onPressed]가 null
 ///
 /// 너비는 [width]로 정합니다.
-/// - null: 글자 길이에 맞춘 가변 너비 (예: 중복 확인 버튼)
-/// - double.infinity: 부모가 허락하는 최대 너비 (예: 가입하기 버튼)
-/// - 숫자: 고정 너비
+/// - null: 글자 길이에 맞춘 Intrinsic 너비 — 입력창 옆 중복 확인 버튼처럼 좁은 자리
+/// - double.infinity: 부모가 허용하는 최대 너비 — Form 아래 가입하기 버튼처럼 넓은 자리.
+///   너비 제약이 없는 Row 안에서는 기준이 없어 오류가 나므로 Expanded 등으로 먼저 감쌉니다.
+/// - 숫자: 화면 크기와 관계없이 항상 같은 너비
 ///
 /// 색은 테마의 elevatedButtonTheme(primary / primaryDisabled / onPrimary)을 따릅니다.
 class MovieLogButton extends StatelessWidget {
