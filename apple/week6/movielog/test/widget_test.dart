@@ -4,20 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
-import 'package:movielog/core/network/api_config.dart';
 import 'package:movielog/app/movie_log_app.dart';
 import 'package:movielog/router/app_router.dart';
 import 'package:movielog/widgets/movie_card.dart';
 
-import 'fake_api.dart';
 import 'fake_member_check.dart';
 import 'fake_tmdb.dart';
 
 void main() {
   setUp(() {
-    // 평점 조회(RatingService)가 서버를 호출하므로 가짜 서버로 대체
-    // (회원가입 중복 확인·영화 목록은 MovieLogApp에 가짜 Service를 넣어 사용)
-    ApiConfig.client = fakeApiClient();
     // AppRouter.router는 static이라 테스트마다 시작 화면으로 되돌림
     AppRouter.router.go('/start');
     // 영화 목록이 마지막 선택 장르를 읽으므로 메모리 저장소로 대체

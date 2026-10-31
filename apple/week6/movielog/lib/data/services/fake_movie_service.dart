@@ -11,7 +11,7 @@ class MovieLoadException implements Exception {
 }
 
 /// 3주차 Mock Data를 1초 뒤에 돌려주는 가짜 서비스입니다.
-/// 5주차부터 앱은 RatingService로 실제 API를 호출하고,
+/// 5주차부터 앱은 실제 API를 호출하고,
 /// 이 서비스는 서버 없이 화면 상태(로딩·빈 목록·실패)를 확인하는 테스트에서 사용합니다.
 class FakeMovieService {
   const FakeMovieService();
