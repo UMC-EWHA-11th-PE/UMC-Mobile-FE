@@ -191,7 +191,8 @@ class _LogoutButton extends StatelessWidget {
       },
       style: TextButton.styleFrom(
         foregroundColor: colors.primary,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        // 글자 오른쪽 끝을 헤더 여백(16)에 맞춥니다. 누르는 영역은 왼쪽으로만 넓힙니다.
+        padding: const EdgeInsets.only(left: 8),
         minimumSize: const Size(0, 40),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         textStyle: Theme.of(context).textTheme.bodyMedium
