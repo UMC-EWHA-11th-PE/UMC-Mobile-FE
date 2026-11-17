@@ -21,3 +21,9 @@ String? apiErrorMessage(DioException error) {
   final message = data['message'];
   return message is String ? message : null;
 }
+
+/// 보호 요청의 세션 만료 후보(토큰 없음·무효·만료)인지 — 현재 세션을 정리합니다.
+///
+/// 로그인 Form 오류인 AUTH401_1은 포함하지 않습니다.
+bool isSessionExpiredCode(String? code) =>
+    code == 'AUTH401_2' || code == 'AUTH401_3' || code == 'AUTH401_4';

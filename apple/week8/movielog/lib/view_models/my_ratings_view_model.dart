@@ -1,10 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/network/api_error.dart';
+import '../data/models/rating_dto.dart';
 import '../data/models/rating_with_movie.dart';
 import '../data/models/tmdb_movie_detail_dto.dart';
 import '../data/services/rating_api_service.dart';
 import '../data/services/tmdb_movie_service.dart';
+import 'session_rating_store.dart';
 import 'submit_status.dart';
 
 export 'submit_status.dart';
@@ -18,34 +21,52 @@ enum MyRatingsLoadStatus { idle, loading, success, empty, error }
 /// - 같은 movieId는 한 번만 조회해 캐시합니다. 일시적인 실패는 캐시하지 않아 다음 로딩에서 다시 시도합니다.
 /// - 화면을 벗어났거나 새 요청이 시작된 뒤 도착한 이전 응답은 무시합니다.
 ///
-/// [memberId]는 회원가입으로 얻은 학습용 ID입니다(LearningMemberSession).
-/// 인증된 '내 계정'은 아니며, 실제 회원 식별은 JWT 주차에서 토큰으로 바뀝니다.
+/// 8주차(v7) — 목록은 두 곳을 합칩니다.
+/// - 이번 로그인 세션에서 등록·수정한 평점 ([SessionRatingStore], 등록·수정 응답의 평점 객체)
+/// - [memberId]가 있으면 공개 조회 GET /v7/members/{memberId}/ratings (토큰 없음)
+///   memberId는 이 앱에서 가입한 계정과 같은 email로 로그인했을 때만 받습니다.
+/// memberId가 없으면 이번 세션 등록분만 보여주고 [sessionOnlyNotice]로 안내합니다.
+/// 수정·삭제는 JWT로 보내고 memberId를 쓰지 않습니다. 소유자 확인은 서버가 토큰으로 합니다.
 ///
 /// 7주차 — 수정·삭제가 성공하면 목록을 다시 조회합니다.
 /// - 쓰기 실패: [WriteFailure]를 던져 Dialog가 실패로 처리 (입력 유지, 다시 시도)
 /// - 쓰기 성공 + 재조회 실패: 저장 성공으로 돌려주고 [refreshWarning]으로 조회만 다시 시도하게 안내
+/// - 401(AUTH401_2/3/4): [onSessionExpired]로 세션 정리 → Router가 /login으로 이동
+/// - 403(RATING403_1)·404(RATING404_1): 안내 후 목록을 다시 맞춥니다. 로그아웃하지 않습니다.
 ///
 /// W7-CH 다중 삭제 — 선택 모드에서 고른 평점을 하나씩 DELETE한 뒤 목록을 한 번만 다시 조회합니다.
 /// 삭제 중에는 [isBulkDeleting]으로 화면 전체 입력을 막습니다.
 class MyRatingsViewModel extends ChangeNotifier {
   MyRatingsViewModel(
     this._service,
-    this._movieService,
-    this.memberId, {
-    this.currentMemberId,
-  });
+    this._movieService, {
+    this.memberId,
+    SessionRatingStore? sessionRatings,
+    this.sessionVersion = 0,
+    this.onSessionExpired,
+  }) : _sessionRatings = sessionRatings ?? SessionRatingStore();
 
   final RatingApiService _service;
   final TmdbMovieService _movieService;
+  final SessionRatingStore _sessionRatings;
 
-  /// 목록을 조회하는 회원
-  final int memberId;
+  /// 공개 조회에 쓸 내 memberId — 이 앱에서 가입한 같은 계정이 아니면 null
+  final int? memberId;
 
-  /// 지금 앱을 쓰는 학습용 회원(LearningMemberSession) — 가입 전이면 null
-  final int? currentMemberId;
+  /// 이 화면을 연 로그인 세션 — 다른 세션의 등록분을 섞지 않습니다.
+  final int sessionVersion;
 
-  /// 본인이 작성한 평점 목록일 때만 수정·삭제 버튼을 보여줍니다.
-  bool get canModify => currentMemberId != null && currentMemberId == memberId;
+  /// 보호 요청이 세션 만료(AUTH401_2/3/4)를 받았을 때 세션 정리를 요청합니다.
+  final Future<void> Function()? onSessionExpired;
+
+  /// 이 화면은 로그인해야 열리고 목록은 내 평점만 담으므로 수정·삭제 버튼을 보여줍니다.
+  /// 실제 소유자 확인은 서버가 토큰으로 하며, 아니면 RATING403_1로 거절합니다.
+  bool get canModify => true;
+
+  /// 공개 조회를 못 하고 이번 세션 등록분만 보여줄 때의 안내
+  String? get sessionOnlyNotice => memberId == null
+      ? '이번 로그인에서 등록한 평점만 보여요.\n이전에 남긴 평점은 아직 불러올 수 없어요.'
+      : null;
 
   /// 저장은 성공했지만 다시 조회가 실패했을 때의 안내 — 다음 조회가 성공하면 지웁니다.
   String? refreshWarning;
@@ -71,8 +92,19 @@ class MyRatingsViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final rawRatings = await _service.fetchMyRatings(memberId);
+      final id = memberId;
+      final fromServer = id == null
+          ? const <RatingDto>[]
+          : await _service.fetchMyRatings(id);
       if (_disposed || version != _requestVersion) return;
+
+      // 서버 목록을 기준으로, 아직 서버 목록에 없는 이번 세션 등록분을 앞에 붙입니다.
+      final serverIds = {for (final rating in fromServer) rating.ratingId};
+      final rawRatings = [
+        for (final rating in _sessionRatings.ratings(sessionVersion))
+          if (!serverIds.contains(rating.ratingId)) rating,
+        ...fromServer,
+      ];
 
       // 캐시에 없는 영화만 한꺼번에 조회합니다. 하나가 실패해도 나머지 평점은 지우지 않습니다.
       final uncachedIds = {
@@ -145,7 +177,7 @@ class MyRatingsViewModel extends ChangeNotifier {
 
   /// 선택한 평점을 순서대로 삭제하고 실패한 개수를 돌려줍니다.
   ///
-  /// v6에는 여러 개를 한 번에 지우는 API가 없어 DELETE를 하나씩 보냅니다.
+  /// v7에도 여러 개를 한 번에 지우는 API가 없어 DELETE /v7/ratings/{id}를 하나씩 보냅니다.
   /// - 모두 성공: 선택 모드를 끝냅니다.
   /// - 일부 실패: 실패한 평점만 선택된 채로 남겨 다시 시도할 수 있게 합니다.
   /// - 한 개라도 서버 상태가 바뀌었으면 목록을 한 번만 다시 조회합니다.
@@ -158,11 +190,24 @@ class MyRatingsViewModel extends ChangeNotifier {
     var needsRefresh = false;
     for (final ratingId in [..._selectedIds]) {
       try {
-        await _service.deleteRating(memberId: memberId, ratingId: ratingId);
+        await _service.deleteRating(ratingId);
+        _sessionRatings.remove(sessionVersion, ratingId);
         needsRefresh = true;
       } on DioException catch (error) {
+        if (isSessionExpiredCode(apiErrorCode(error))) {
+          // 세션 만료: 남은 삭제는 보내지 않고 정리합니다. Router가 /login으로 보냅니다.
+          isBulkDeleting = false;
+          await onSessionExpired?.call();
+          return _selectedIds.length;
+        }
         failedIds.add(ratingId);
-        if (shouldRefreshAfterRatingError(error)) needsRefresh = true;
+        if (shouldRefreshAfterRatingError(error)) {
+          // 이미 없는 평점(404)은 이번 세션 보관분에서도 뺍니다.
+          if (apiErrorCode(error) == 'RATING404_1') {
+            _sessionRatings.remove(sessionVersion, ratingId);
+          }
+          needsRefresh = true;
+        }
       } catch (_) {
         failedIds.add(ratingId);
       }
@@ -183,36 +228,49 @@ class MyRatingsViewModel extends ChangeNotifier {
     return failedIds.length;
   }
 
-  /// 평점 수정 — PATCH. comment가 null이면 후기를 지우는 요청입니다.
+  /// 평점 수정 — PATCH /v7/ratings/{ratingId}. 전체 교체라 comment가 null이면 후기를 지웁니다.
+  /// 성공 result(수정된 평점)로 이번 세션 보관분을 바꿉니다.
   Future<void> updateRating({
     required int ratingId,
     required int score,
     String? comment,
   }) {
-    return _write(
-      () => _service.updateRating(
-        memberId: memberId,
+    return _write(ratingId, () async {
+      final updated = await _service.updateRating(
         ratingId: ratingId,
         score: score,
         comment: comment,
-      ),
-    );
+      );
+      _sessionRatings.upsert(sessionVersion, updated);
+    });
   }
 
-  /// 평점 삭제 — DELETE (204, body 없음)
+  /// 평점 삭제 — DELETE /v7/ratings/{ratingId} (200, result null)
   Future<void> deleteRating(int ratingId) {
-    return _write(
-      () => _service.deleteRating(memberId: memberId, ratingId: ratingId),
-    );
+    return _write(ratingId, () async {
+      await _service.deleteRating(ratingId);
+      _sessionRatings.remove(sessionVersion, ratingId);
+    });
   }
 
   /// 쓰기 → 성공하면 다시 조회. 쓰기 실패와 재조회 실패를 구분합니다.
-  Future<void> _write(Future<void> Function() request) async {
+  Future<void> _write(int ratingId, Future<void> Function() request) async {
     try {
       await request();
     } on DioException catch (error) {
+      final code = apiErrorCode(error);
+      if (isSessionExpiredCode(code)) {
+        // 세션 만료: 정리하면 Router가 로그인 화면으로 보내고 그곳에서 안내합니다.
+        await onSessionExpired?.call();
+        throw const WriteFailure('로그인이 만료됐어요. 다시 로그인해 주세요.');
+      }
       // 403(본인 평점 아님)·404(이미 없는 평점)는 화면 목록이 서버와 어긋났다는 뜻 — 다시 맞춥니다.
-      if (shouldRefreshAfterRatingError(error) && !_disposed) await load();
+      if (shouldRefreshAfterRatingError(error) && !_disposed) {
+        if (code == 'RATING404_1') {
+          _sessionRatings.remove(sessionVersion, ratingId);
+        }
+        await load();
+      }
       throw WriteFailure(writeErrorMessage(error));
     } catch (_) {
       throw const WriteFailure('저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');

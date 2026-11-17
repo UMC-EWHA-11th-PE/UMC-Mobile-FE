@@ -29,9 +29,9 @@ import '../view_models/movie_detail_view_model.dart';
 /// - [_ActionBar] 하단 고정 즐겨찾기·평점 남기기 버튼
 ///
 /// 7주차 — 평점 남기기가 [RatingDialog]를 열고, Dialog 안에서
-/// [MovieDetailViewModel.createRating]으로 v6 POST를 보냅니다.
+/// [MovieDetailViewModel.createRating]으로 POST /v7/ratings(JWT)를 보냅니다.
 /// 저장이 끝나 Dialog가 true를 돌려준 뒤에만 성공 Snackbar를 띄웁니다.
-/// 학습용 회원가입 전이면 평점 남기기를 끄고 회원가입으로 안내합니다.
+/// 이 화면은 로그인해야 열리므로 7주차의 학습용 회원가입 안내는 없앴습니다.
 class MovieDetailScreen extends StatefulWidget {
   const MovieDetailScreen({super.key, required this.movieId, this.detail});
 
@@ -136,7 +136,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         bookmarked: _bookmarked,
         onBookmark: _toggleBookmark,
         onRate: isMock ? _rateMockMovie : (canRate ? _rate : null),
-        onSignUp: canRate ? null : () => context.go('/register'),
       ),
     );
   }
@@ -383,17 +382,13 @@ class _ActionBar extends StatelessWidget {
     required this.bookmarked,
     required this.onBookmark,
     required this.onRate,
-    this.onSignUp,
   });
 
   final bool bookmarked;
   final VoidCallback onBookmark;
 
-  /// null이면 평점 남기기가 비활성 (학습용 회원가입 전)
+  /// null이면 평점 남기기가 비활성 (영화 id를 모를 때)
   final VoidCallback? onRate;
-
-  /// null이 아니면 버튼 위에 학습용 회원가입 안내를 보여줍니다.
-  final VoidCallback? onSignUp;
 
   @override
   Widget build(BuildContext context) {
@@ -414,10 +409,7 @@ class _ActionBar extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              if (onSignUp != null) _SignUpHint(onSignUp: onSignUp!),
-              _buttons(colors, labelStyle),
-            ],
+            children: [_buttons(colors, labelStyle)],
           ),
         ),
       ),
@@ -462,31 +454,6 @@ class _ActionBar extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 학습용 회원가입 전 안내 — 평점은 가입으로 얻은 memberId로만 남길 수 있습니다.
-class _SignUpHint extends StatelessWidget {
-  const _SignUpHint({required this.onSignUp});
-
-  final VoidCallback onSignUp;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              '평점을 남기려면 학습용 회원가입이 필요합니다.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-          TextButton(onPressed: onSignUp, child: const Text('회원가입')),
-        ],
-      ),
     );
   }
 }

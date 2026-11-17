@@ -18,7 +18,7 @@ Map<String, Object?> fakeCommonError(String code, String message) => {
 /// - [gate]가 있으면 그 Future가 끝날 때까지 응답을 미룸 — 늦은 응답 확인용
 /// - [requests]에 보낸 요청 path를 순서대로 기록
 ///
-/// 회원가입 (POST /v6/members)
+/// 회원가입 (POST /v7/members)
 /// - 기본은 201 + 공통 형식 result { memberId: [memberId], email, nickname }
 /// - [signUpStatus]가 있으면 [signUpCode]·[signUpMessage]로 공통 오류 응답
 /// - [signUpResult]가 false면 result를 null로 응답 — 계약 오류 확인용

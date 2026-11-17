@@ -5,12 +5,13 @@ import '../models/common_response.dart';
 import '../models/create_member_request.dart';
 import '../models/sign_up_models.dart';
 
-/// 회원가입 관련 v6 API를 호출합니다. (6주차 MemberCheckService에서 이름을 바꿈)
-/// - GET  /v6/members/nickname/{nickname} — 성공은 직접 객체 { "available": true }
-/// - GET  /v6/members/email/{email}       — 성공은 직접 객체
-/// - POST /v6/members                     — 성공은 201 + `CommonResponse<SignUpResult>`
+/// 회원가입 관련 API를 호출합니다. (6주차 MemberCheckService에서 이름을 바꿈, 8주차에 v7 경로로 변경)
+/// 공개 요청이므로 Interceptor 없는 공개 Client를 받습니다.
+/// - GET  /v7/members/nickname/{nickname} — 성공은 직접 객체 { "available": true }
+/// - GET  /v7/members/email/{email}       — 성공은 직접 객체
+/// - POST /v7/members                     — 성공은 201 + `CommonResponse<SignUpResult>`
 ///
-/// 오류는 모두 v6 공통 형식이며, DioException 그대로 ViewModel로 넘깁니다.
+/// 오류는 모두 공통 형식이며, DioException 그대로 ViewModel로 넘깁니다.
 class SignUpService {
   SignUpService(this._dio);
 
@@ -20,7 +21,7 @@ class SignUpService {
   Future<bool> checkNickname(String nickname) async {
     // 한글·특수문자가 경로를 깨뜨리지 않도록 인코딩합니다.
     final encoded = Uri.encodeComponent(nickname.trim());
-    final response = await _dio.get('/v6/members/nickname/$encoded');
+    final response = await _dio.get('/v7/members/nickname/$encoded');
     return CheckResult.fromJson(response.data as Map<String, dynamic>)
         .available;
   }
@@ -28,7 +29,7 @@ class SignUpService {
   /// 사용할 수 있는 이메일이면 true
   Future<bool> checkEmail(String email) async {
     final encoded = Uri.encodeComponent(email.trim());
-    final response = await _dio.get('/v6/members/email/$encoded');
+    final response = await _dio.get('/v7/members/email/$encoded');
     return CheckResult.fromJson(response.data as Map<String, dynamic>)
         .available;
   }
@@ -38,7 +39,7 @@ class SignUpService {
   Future<CommonResponse<SignUpResult>> signUp(
     CreateMemberRequest request,
   ) async {
-    final response = await _dio.post('/v6/members', data: request.toJson());
+    final response = await _dio.post('/v7/members', data: request.toJson());
 
     return CommonResponse<SignUpResult>.fromJson(
       response.data as Map<String, dynamic>,

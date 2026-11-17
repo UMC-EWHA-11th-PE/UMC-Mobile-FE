@@ -1,4 +1,4 @@
-/// v6 공통 응답 형식입니다. 신규 쓰기 API의 성공 응답과 모든 v6 오류 응답이 이 모양입니다.
+/// 공통 응답 형식(v6~v7)입니다. 쓰기·로그인·내 정보 API의 성공 응답과 모든 오류 응답이 이 모양입니다.
 ///
 /// 예) 성공 { "isSuccess": true,  "code": "COMMON201", "message": "...", "result": { ... } }
 ///     실패 { "isSuccess": false, "code": "COMMON409", "message": "이미 사용 중인 이메일입니다.", "result": null }

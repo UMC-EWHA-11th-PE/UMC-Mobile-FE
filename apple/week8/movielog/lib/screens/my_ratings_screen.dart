@@ -20,10 +20,11 @@ import '../widgets/tmdb_poster_image.dart';
 /// - 빈 목록: [_MyRatingsEmpty]
 /// - 성공: 평점 카드 목록 (W6-02) — TMDB 영화를 못 찾은 평점도 placeholder로 남깁니다.
 ///
-/// 회원가입으로 얻은 학습용 memberId의 평점을 읽습니다. (로그인 인증은 아님)
+/// 8주차 — 이번 로그인 세션 등록분 + (같은 계정으로 가입했으면) 공개 조회 목록을 보여줍니다.
+/// 공개 조회를 못 하면 이번 세션 등록분만이라는 안내를 함께 보여줍니다.
 /// 하단 NavigationBar 없이 root Navigator 위에 열립니다.
 ///
-/// 7주차 — 본인 평점([MyRatingsViewModel.canModify])에만 수정·삭제 버튼을 보여줍니다.
+/// 7주차 — 수정·삭제 버튼을 보여줍니다. 8주차부터 소유자 확인은 서버가 JWT로 합니다(RATING403_1).
 /// - 수정: 기존 별점·코멘트를 채운 [RatingDialog]
 /// - 삭제: 되돌릴 수 없으므로 확인 Dialog를 거쳐서만 요청
 /// - 저장 성공 후 재조회만 실패하면 [MyRatingsViewModel.refreshWarning]과 조회 다시 시도
@@ -88,22 +89,70 @@ class MyRatingsScreen extends StatelessWidget {
         message: viewModel.refreshWarning ?? viewModel.message,
         onRetry: viewModel.load,
       ),
-      MyRatingsLoadStatus.empty => const _MyRatingsEmpty(),
-      MyRatingsLoadStatus.success => _MyRatingsList(
-        ratings: viewModel.ratings,
-        canModify: viewModel.canModify,
-        onLongPress: viewModel.startSelection,
+      MyRatingsLoadStatus.empty => _MyRatingsEmpty(
+        notice: viewModel.sessionOnlyNotice,
+      ),
+      MyRatingsLoadStatus.success => Column(
+        children: [
+          if (viewModel.sessionOnlyNotice case final notice?)
+            _SessionOnlyNotice(text: notice),
+          Expanded(
+            child: _MyRatingsList(
+              ratings: viewModel.ratings,
+              canModify: viewModel.canModify,
+              onLongPress: viewModel.startSelection,
+            ),
+          ),
+        ],
       ),
     };
   }
 }
 
 class _MyRatingsEmpty extends StatelessWidget {
-  const _MyRatingsEmpty();
+  const _MyRatingsEmpty({this.notice});
+
+  /// 이번 세션 등록분만 보여줄 때의 안내 — 빈 목록이 "평점이 하나도 없다"로 오해되지 않게 합니다.
+  final String? notice;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('아직 등록된 평점이 없습니다.'));
+    final notice = this.notice;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('아직 등록된 평점이 없습니다.'),
+          if (notice != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              notice,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 8주차 — memberId를 모르는 계정이면 이번 로그인 세션에서 등록한 평점만 보여준다는 안내
+class _SessionOnlyNotice extends StatelessWidget {
+  const _SessionOnlyNotice({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    );
   }
 }
 
@@ -729,24 +778,6 @@ class _Poster extends StatelessWidget {
       posterPath: path,
       width: size.width,
       height: size.height,
-    );
-  }
-}
-
-/// 학습용 회원가입 전에 "내가 등록한 평점"에 들어왔을 때의 안내 화면입니다.
-///
-/// 다른 회원의 path(6주차 고정 ID 1)로 요청하지 않도록 API를 호출하지 않습니다.
-class MyRatingsSignUpRequired extends StatelessWidget {
-  const MyRatingsSignUpRequired({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: CommonAppBar(
-        title: '내가 등록한 평점',
-        titleStyle: AppTheme.appBarTitleBold,
-      ),
-      body: Center(child: Text('학습용 회원가입이 필요합니다.')),
     );
   }
 }

@@ -19,12 +19,12 @@ void main() {
         requests: requests,
       ),
       fakeTmdbService(),
-      1,
+      memberId: 1,
     );
 
     await viewModel.load();
 
-    expect(requests, ['/v6/members/1/ratings']);
+    expect(requests, ['/v7/members/1/ratings']);
     expect(viewModel.status, MyRatingsLoadStatus.success);
     expect(viewModel.message, isNull);
     expect(viewModel.ratings.map((entry) => entry.movie?.title), [
@@ -39,7 +39,7 @@ void main() {
     final viewModel = MyRatingsViewModel(
       fakeRatingApiService(gate: gate.future),
       fakeTmdbService(),
-      1,
+      memberId: 1,
     );
 
     final pending = viewModel.load();
@@ -54,7 +54,7 @@ void main() {
     final viewModel = MyRatingsViewModel(
       fakeRatingApiService(),
       fakeTmdbService(),
-      1,
+      memberId: 1,
     );
 
     await viewModel.load();
@@ -65,13 +65,17 @@ void main() {
 
   test('400·404·통신 실패는 각각의 안내 문구와 함께 error', () async {
     final cases = {
-      fakeRatingApiService(statusCode: 400): 'memberId 형식을 다시 확인해 주세요.',
-      fakeRatingApiService(statusCode: 404): '존재하지 않는 회원입니다.',
+      fakeRatingApiService(statusCode: 400): '평점을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      fakeRatingApiService(statusCode: 404): '해당 회원을 찾을 수 없습니다.',
       fakeRatingApiService(fail: true): '평점을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.',
     };
 
     for (final MapEntry(key: service, value: message) in cases.entries) {
-      final viewModel = MyRatingsViewModel(service, fakeTmdbService(), 1);
+      final viewModel = MyRatingsViewModel(
+        service,
+        fakeTmdbService(),
+        memberId: 1,
+      );
       await viewModel.load();
 
       expect(viewModel.status, MyRatingsLoadStatus.error);
@@ -88,7 +92,7 @@ void main() {
         ],
       ),
       fakeTmdbService(),
-      1,
+      memberId: 1,
     );
 
     await viewModel.load();
@@ -111,7 +115,7 @@ void main() {
         ],
       ),
       fakeTmdbService(requests: tmdbRequests),
-      1,
+      memberId: 1,
     );
 
     await viewModel.load();
@@ -131,7 +135,7 @@ void main() {
     final viewModel = MyRatingsViewModel(
       fakeRatingApiService(ratings: [fakeRatingJson(movieId: 1)]),
       fakeTmdbService(fail: () => tmdbDown, requests: tmdbRequests),
-      1,
+      memberId: 1,
     );
 
     await viewModel.load();
@@ -153,7 +157,7 @@ void main() {
         gate: gate.future,
       ),
       fakeTmdbService(),
-      1,
+      memberId: 1,
     );
 
     final pending = viewModel.load();

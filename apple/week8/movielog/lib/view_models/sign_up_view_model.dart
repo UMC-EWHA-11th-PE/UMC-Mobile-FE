@@ -33,7 +33,7 @@ enum CheckStatus {
 /// 이전에 중복으로 확인한 값을 다시 입력하면 API 없이 바로 중복으로 표시합니다.
 /// 서버 상태는 그 사이 바뀔 수 있으므로 최종 기준은 회원가입 POST의 409입니다.
 ///
-/// 7주차 — [submit]이 POST /v6/members를 보내고, 성공하면 [createdMemberId]에
+/// 7주차 — [submit]이 POST /v7/members를 보내고, 성공하면 [createdMemberId]에
 /// 응답 result의 memberId를 담습니다. 세션 저장은 화면이 합니다.
 class SignUpViewModel extends ChangeNotifier {
   SignUpViewModel(this._service);
@@ -175,7 +175,7 @@ class SignUpViewModel extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
-  // 회원가입 제출 (POST /v6/members)
+  // 회원가입 제출 (POST /v7/members)
   // ---------------------------------------------------------------------------
 
   SubmitStatus submitStatus = SubmitStatus.idle;

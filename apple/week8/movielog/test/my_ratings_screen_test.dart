@@ -17,7 +17,8 @@ import 'fake_tmdb.dart';
 Widget _app(RatingApiService service) => MaterialApp(
   theme: AppTheme.light,
   home: ChangeNotifierProvider<MyRatingsViewModel>(
-    create: (_) => MyRatingsViewModel(service, fakeTmdbService(), 1)..load(),
+    create: (_) =>
+        MyRatingsViewModel(service, fakeTmdbService(), memberId: 1)..load(),
     child: const MyRatingsScreen(),
   ),
 );
@@ -103,7 +104,7 @@ void main() {
     await tester.pumpWidget(_app(fakeRatingApiService(statusCode: 404)));
     await tester.pumpAndSettle();
 
-    expect(find.text('존재하지 않는 회원입니다.'), findsOneWidget);
+    expect(find.text('해당 회원을 찾을 수 없습니다.'), findsOneWidget);
     expect(find.text('다시 시도'), findsOneWidget);
     // 다시 시도는 공용 버튼 고정 너비 120
     expect(

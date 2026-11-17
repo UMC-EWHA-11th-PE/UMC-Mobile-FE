@@ -6,6 +6,7 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import 'package:movielog/app/movie_log_app.dart';
+import 'package:movielog/data/models/rating_dto.dart';
 import 'package:movielog/data/services/rating_api_service.dart';
 import 'package:movielog/data/services/tmdb_movie_service.dart';
 import 'package:movielog/screens/movie_detail_screen.dart';
@@ -18,12 +19,13 @@ import 'fake_auth.dart';
 import 'fake_tmdb.dart';
 
 /// 라우터와 같은 방식으로 상세 ViewModel을 만들어 붙입니다.
-/// [memberId]는 학습용 세션 값 — null이면 회원가입 전입니다.
+/// 등록 성공 평점은 [created]에, 세션 만료 요청은 [expired]에 기록합니다.
 Widget _app(
   TmdbMovieService service,
   int? movieId, {
   RatingApiService? ratingService,
-  int? memberId,
+  List<RatingDto>? created,
+  List<bool>? expired,
 }) => MaterialApp(
   theme: AppTheme.light,
   home: ChangeNotifierProvider<MovieDetailViewModel>(
@@ -31,7 +33,8 @@ Widget _app(
       service,
       movieId: movieId,
       ratingService: ratingService ?? fakeRatingApiService(),
-      memberId: memberId,
+      onRatingCreated: created?.add,
+      onSessionExpired: () async => expired?.add(true),
     )..load(),
     child: MovieDetailScreen(movieId: movieId),
   ),
@@ -123,48 +126,77 @@ void main() {
     });
   });
 
-  group('평점 등록 (POST /v6/members/{memberId}/ratings)', () {
-    testWidgets('학습용 회원가입 전에는 평점 남기기가 꺼져 있고 회원가입을 안내한다', (tester) async {
-      _useTallView(tester);
-      await tester.pumpWidget(_app(fakeTmdbService(), 1));
-      await tester.pumpAndSettle();
+  group('평점 등록 (POST /v7/ratings)', () {
+    testWidgets(
+      'memberId 없이 TMDB id로 등록하고, 응답 평점을 세션에 넘긴 뒤 Dialog를 닫고 Snackbar',
+      (tester) async {
+        _useTallView(tester);
+        final server = FakeRatingServer();
+        final created = <RatingDto>[];
+        await tester.pumpWidget(
+          _app(
+            fakeTmdbService(),
+            1,
+            ratingService: server.service,
+            created: created,
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('평점을 남기려면 학습용 회원가입이 필요합니다.'), findsOneWidget);
-      await tester.tap(find.text('평점 남기기'));
-      await tester.pumpAndSettle();
-      expect(find.byType(RatingDialog), findsNothing);
-    });
+        await _rate(tester, 5);
 
-    testWidgets('가입한 memberId와 TMDB id로 등록하고, 성공하면 Dialog를 닫고 Snackbar', (
+        expect(server.calls, ['POST /v7/ratings']);
+        // 코멘트를 비우면 comment 키를 보내지 않고, memberId도 보내지 않습니다.
+        expect(server.bodies.single, {'movieId': 1, 'score': 5});
+        expect(created.single.movieId, 1);
+        expect(created.single.score, 5);
+        expect(find.byType(RatingDialog), findsNothing);
+        expect(find.textContaining('평점을 등록했습니다.'), findsOneWidget);
+      },
+    );
+
+    testWidgets('세션 만료(AUTH401_4)면 세션 정리를 요청하고 등록 성공으로 처리하지 않는다', (
       tester,
     ) async {
       _useTallView(tester);
-      final server = FakeRatingServer();
+      final server = FakeRatingServer()
+        ..writeError = (
+          status: 401,
+          code: 'AUTH401_4',
+          message: '토큰이 만료되었습니다. 다시 로그인해주세요.',
+        );
+      final expired = <bool>[];
+      final created = <RatingDto>[];
       await tester.pumpWidget(
-        _app(fakeTmdbService(), 1, ratingService: server.service, memberId: 42),
+        _app(
+          fakeTmdbService(),
+          1,
+          ratingService: server.service,
+          created: created,
+          expired: expired,
+        ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('평점을 남기려면 학습용 회원가입이 필요합니다.'), findsNothing);
 
-      await _rate(tester, 5);
+      await _rate(tester, 4);
 
-      expect(server.calls, ['POST /v6/members/42/ratings']);
-      // 코멘트를 비우면 comment 키를 보내지 않습니다.
-      expect(server.bodies.single, {'movieId': 1, 'score': 5});
-      expect(find.byType(RatingDialog), findsNothing);
-      expect(find.textContaining('평점을 등록했습니다.'), findsOneWidget);
+      expect(expired, [true]);
+      expect(created, isEmpty);
+      expect(find.textContaining('평점을 등록했습니다.'), findsNothing);
     });
 
-    testWidgets('409 중복 등록이면 Dialog에 서버 문구를 보여주고 입력을 유지한다', (tester) async {
+    testWidgets('RATING409_1 중복 등록이면 Dialog에 기존 기록 확인 안내를 보여주고 입력을 유지한다', (
+      tester,
+    ) async {
       _useTallView(tester);
       final server = FakeRatingServer()
         ..writeError = (
           status: 409,
-          code: 'COMMON409',
+          code: 'RATING409_1',
           message: '이미 이 영화에 평점을 남기셨습니다.',
         );
       await tester.pumpWidget(
-        _app(fakeTmdbService(), 1, ratingService: server.service, memberId: 42),
+        _app(fakeTmdbService(), 1, ratingService: server.service),
       );
       await tester.pumpAndSettle();
 
@@ -175,21 +207,21 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(RatingDialog),
-          matching: find.text('이미 이 영화에 평점을 남기셨습니다.'),
+          matching: find.text('이미 평점을 남긴 영화예요. 내가 등록한 평점에서 확인해 주세요.'),
         ),
         findsOneWidget,
       );
       expect(
         find.descendant(
           of: find.byType(SnackBar),
-          matching: find.text('이미 이 영화에 평점을 남기셨습니다.'),
+          matching: find.text('이미 평점을 남긴 영화예요. 내가 등록한 평점에서 확인해 주세요.'),
         ),
         findsOneWidget,
       );
       expect(find.text('두 번째 감상'), findsOneWidget);
       expect(find.textContaining('평점을 등록했습니다.'), findsNothing);
       // 409는 목록을 다시 조회할 필요가 없는 오류 — GET 없음
-      expect(server.calls, ['POST /v6/members/42/ratings']);
+      expect(server.calls, ['POST /v7/ratings']);
     });
   });
 

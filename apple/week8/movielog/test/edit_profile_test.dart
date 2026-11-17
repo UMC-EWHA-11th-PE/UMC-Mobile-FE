@@ -177,7 +177,8 @@ void main() {
     }
 
     testWidgets('W8-06 로그아웃하면 Router가 로그인 화면으로 보낸다', (tester) async {
-      final learning = LearningMemberSession()..setMemberId(42);
+      final learning = LearningMemberSession()
+        ..setMember(42, 'mingo@example.com');
       final (auth, _, storage) = await pumpMy(
         tester,
         learningMemberSession: learning,

@@ -27,7 +27,7 @@ void main() {
 
   group('RatingApiService', () {
     test(
-      '/v6/members/{memberId}/ratings로 요청하고 배열을 RatingDto 목록으로 바꾼다',
+      '/v7/members/{memberId}/ratings로 요청하고 배열을 RatingDto 목록으로 바꾼다',
       () async {
         final requests = <String>[];
         final service = fakeRatingApiService(
@@ -40,7 +40,7 @@ void main() {
 
         final ratings = await service.fetchMyRatings(1);
 
-        expect(requests, ['/v6/members/1/ratings']);
+        expect(requests, ['/v7/members/1/ratings']);
         expect(ratings.map((rating) => rating.movieId), [550, 680]);
         expect(ratings.last.comment, isNull);
       },
@@ -76,17 +76,17 @@ void main() {
       }
     }
 
-    test('400이면 memberId 형식 안내', () async {
+    test('400은 다시 시도 안내', () async {
       expect(
         await messageFor(fakeRatingApiService(statusCode: 400)),
-        'memberId 형식을 다시 확인해 주세요.',
+        '평점을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.',
       );
     });
 
-    test('404이면 존재하지 않는 회원 안내', () async {
+    test('MEMBER404_1이면 회원 없음 안내', () async {
       expect(
         await messageFor(fakeRatingApiService(statusCode: 404)),
-        '존재하지 않는 회원입니다.',
+        '해당 회원을 찾을 수 없습니다.',
       );
     });
 

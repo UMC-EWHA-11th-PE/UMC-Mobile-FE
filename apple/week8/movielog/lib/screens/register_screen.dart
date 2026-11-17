@@ -29,8 +29,8 @@ typedef FieldValidator = String? Function(String? value);
 /// 6주차 — 형식 검사는 validator가, 서버 중복 여부는 [SignUpViewModel]이 담당합니다.
 /// 두 결과를 함께 보여주고, 닉네임·이메일이 모두 사용 가능해야 가입하기가 켜집니다.
 ///
-/// 7주차 — 가입하기가 POST /v6/members를 보냅니다.
-/// - 성공: 응답의 memberId를 [LearningMemberSession]에 저장하고 로그인 화면으로 이동 (8주차)
+/// 7주차 — 가입하기가 POST /members를 보냅니다. (8주차부터 v7 경로)
+/// - 성공: 응답의 memberId를 email과 함께 [LearningMemberSession]에 저장하고 로그인 화면으로 이동 (8주차)
 /// - 400 비밀번호 형식: 비밀번호 입력칸 errorText
 /// - 409 이메일·닉네임 중복(최종 판정) 등: 서버 message를 Snackbar로
 /// - 제출 중: 버튼 로딩, 입력·뒤로가기 막기
@@ -115,10 +115,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       viewModel.emailCheckStatus == CheckStatus.available &&
       _agreedToTerms;
 
-  /// 가입하기 — Form 전체를 다시 검증한 뒤 POST /v6/members를 보냅니다.
+  /// 가입하기 — Form 전체를 다시 검증한 뒤 POST /v7/members를 보냅니다.
   ///
-  /// 성공하면 memberId를 학습용 세션에 저장하고 go로 영화 목록(/movies)에 이동해
-  /// 회원가입 화면을 스택에서 빼므로 목록에서 뒤로 돌아오지 않습니다.
+  /// 성공하면 memberId를 가입한 email과 함께 기억하고(공개 평점 조회용) 로그인 화면으로 go합니다.
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
@@ -136,7 +135,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final memberId = viewModel.createdMemberId;
     if (viewModel.submitStatus == SubmitStatus.success && memberId != null) {
-      context.read<LearningMemberSession>().setMemberId(memberId);
+      // 같은 email로 로그인했을 때만 공개 "유저별 평점 조회"에 이 memberId를 씁니다.
+      context.read<LearningMemberSession>().setMember(
+        memberId,
+        _emailController.text,
+      );
       // ScaffoldMessenger는 앱 전체에 하나라 화면을 이동해도 Snackbar가 남습니다.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

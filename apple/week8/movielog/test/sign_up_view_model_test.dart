@@ -19,7 +19,7 @@ void main() {
       expect(viewModel.nicknameCheckStatus, CheckStatus.available);
       expect(viewModel.nicknameErrorText, isNull);
       // 앞뒤 공백을 뺀 값을 인코딩해 /v6 경로로 요청
-      expect(requests, ['/v6/members/nickname/${Uri.encodeComponent('무비러버')}']);
+      expect(requests, ['/v7/members/nickname/${Uri.encodeComponent('무비러버')}']);
     });
 
     test('요청 중에는 checking이고 버튼을 다시 누를 수 없다', () async {
@@ -134,7 +134,7 @@ void main() {
   });
 
   group('이메일 중복 확인', () {
-    test('이메일은 /v6/members/email 경로로 확인하고 중복이면 에러 문구', () async {
+    test('이메일은 /v7/members/email 경로로 확인하고 중복이면 에러 문구', () async {
       final requests = <String>[];
       final viewModel = SignUpViewModel(
         fakeSignUpService(taken: {'movie+log@umc.com'}, requests: requests),
@@ -146,7 +146,7 @@ void main() {
       expect(viewModel.emailCheckStatus, CheckStatus.duplicated);
       expect(viewModel.emailErrorText, '이미 사용 중인 이메일입니다.');
       // + 와 @ 도 인코딩
-      expect(requests, ['/v6/members/email/movie%2Blog%40umc.com']);
+      expect(requests, ['/v7/members/email/movie%2Blog%40umc.com']);
     });
 
     test('닉네임 결과와 이메일 결과는 서로 영향을 주지 않는다', () async {

@@ -9,7 +9,7 @@ int validateServerScore(double value) {
   return value.toInt();
 }
 
-/// 평점 등록 요청 body — POST /v6/members/{memberId}/ratings
+/// 평점 등록 요청 body — POST /v7/ratings (memberId 없음, JWT로 식별)
 class CreateRatingRequest {
   const CreateRatingRequest({
     required this.movieId,
@@ -31,7 +31,7 @@ class CreateRatingRequest {
   };
 }
 
-/// 평점 수정 요청 body — PATCH /v6/members/{memberId}/ratings/{ratingId}
+/// 평점 수정 요청 body — PATCH /v7/ratings/{ratingId}
 ///
 /// PATCH지만 score는 필수입니다. comment를 생략하면 기존 후기가 null로 덮이는 계약이므로
 /// 후기를 유지하려면 기존 값을 그대로 보내고, 지우려면 null을 명시적으로 보냅니다.

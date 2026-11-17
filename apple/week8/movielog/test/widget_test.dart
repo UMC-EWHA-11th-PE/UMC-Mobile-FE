@@ -668,7 +668,8 @@ void main() {
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
         ratingApiService: server.service,
-        learningMemberSession: LearningMemberSession()..setMemberId(42),
+        learningMemberSession: LearningMemberSession()
+          ..setMember(42, 'mingo@example.com'),
       ),
     );
     await tester.pumpAndSettle();
@@ -685,8 +686,8 @@ void main() {
     await tester.tap(find.text('확인'));
     await tester.pumpAndSettle();
 
-    // 학습용 memberId + TMDB id로 등록
-    expect(server.calls, ['POST /v6/members/42/ratings']);
+    // memberId 없이 TMDB id로 등록 (회원은 JWT로 식별)
+    expect(server.calls, ['POST /v7/ratings']);
     expect(server.bodies.single, {
       'movieId': 1,
       'score': 4,
@@ -703,7 +704,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('내가 등록한 평점'));
     await tester.pumpAndSettle();
-    expect(server.calls.last, 'GET /v6/members/42/ratings');
+    expect(server.calls.last, 'GET /v7/members/42/ratings');
     expect(find.text('별빛 아래 우리'), findsOneWidget);
     expect(find.text('별점 4 / 5'), findsOneWidget);
     expect(find.text('별이 예뻐요'), findsOneWidget);
@@ -730,29 +731,75 @@ void main() {
     expect(find.text('(1,245)'), findsOneWidget);
   });
 
-  testWidgets('학습용 회원가입 전에는 내가 등록한 평점을 요청하지 않고 가입 안내를 보여준다', (
+  testWidgets('다른 계정으로 가입한 memberId는 쓰지 않고, 이번 세션에 등록한 평점만 보여주고 수정한다', (
     WidgetTester tester,
   ) async {
-    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.physicalSize = const Size(390, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    final requests = <String>[];
+    final server = FakeRatingServer(
+      // 공개 조회를 했다면 보였을 다른 회원(42)의 평점
+      ratings: [fakeRatingJson(ratingId: 9, movieId: 2, comment: '남의 평점')],
+    );
     await tester.pumpWidget(
       MovieLogApp(
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
-        ratingApiService: fakeRatingApiService(requests: requests),
+        ratingApiService: server.service,
+        // 로그인한 계정(mingo@example.com)과 다른 email로 가입한 기록
+        learningMemberSession: LearningMemberSession()
+          ..setMember(42, 'other@example.com'),
       ),
     );
     await tester.pumpAndSettle();
+
+    // 영화 상세에서 등록 → 응답 평점을 이번 세션에 보관
+    appRouter(tester).go('/movies/1');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('평점 남기기'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byType(Dialog),
+            matching: find.byType(SvgPicture),
+          )
+          .at(3),
+    );
+    await tester.pump(); // 별점이 반영돼 확인 버튼이 켜진 프레임
+    await tester.tap(find.text('확인'));
+    await tester.pumpAndSettle();
+
     appRouter(tester).go('/my');
     await tester.pumpAndSettle();
     await tester.tap(find.text('내가 등록한 평점'));
     await tester.pumpAndSettle();
 
-    expect(find.text('학습용 회원가입이 필요합니다.'), findsOneWidget);
-    expect(requests, isEmpty);
+    // 다른 회원의 memberId로 공개 조회하지 않습니다.
+    expect(server.calls, ['POST /v7/ratings']);
+    expect(find.text('남의 평점'), findsNothing);
+    expect(find.text('별빛 아래 우리'), findsOneWidget);
+    expect(
+      find.text('이번 로그인에서 등록한 평점만 보여요.\n이전에 남긴 평점은 아직 불러올 수 없어요.'),
+      findsOneWidget,
+    );
+
+    // 이번 세션 등록분은 JWT로 수정할 수 있습니다. (memberId 없음)
+    await tester.tap(find.text('수정'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(Dialog),
+        matching: find.byType(TextField),
+      ),
+      '다시 봐도 좋다',
+    );
+    await tester.tap(find.text('확인'));
+    await tester.pumpAndSettle();
+
+    expect(server.calls.last, startsWith('PATCH /v7/ratings/'));
+    expect(find.text('다시 봐도 좋다'), findsOneWidget);
   });
 
   testWidgets('마이 → 내가 등록한 평점은 하단 탭 없이 열리고, 뒤로가면 마이로 돌아온다', (
@@ -771,7 +818,8 @@ void main() {
           ratings: [fakeRatingJson(movieId: 1)],
           requests: requests,
         ),
-        learningMemberSession: LearningMemberSession()..setMemberId(42),
+        learningMemberSession: LearningMemberSession()
+          ..setMember(42, 'mingo@example.com'),
       ),
     );
     await tester.pumpAndSettle();
@@ -791,8 +839,8 @@ void main() {
     );
     expect(find.byType(NavigationBar), findsNothing);
     expect(find.text('별빛 아래 우리'), findsOneWidget);
-    // 6주차 고정 ID 1이 아니라 가입으로 얻은 memberId로 조회
-    expect(requests, ['/v6/members/42/ratings']);
+    // 같은 계정으로 가입한 memberId일 때만 공개 조회
+    expect(requests, ['/v7/members/42/ratings']);
 
     await tester.tap(find.byTooltip('뒤로가기'));
     await tester.pumpAndSettle();

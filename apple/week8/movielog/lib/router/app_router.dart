@@ -26,6 +26,7 @@ import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
 import '../view_models/learning_member_session.dart';
 import '../view_models/my_ratings_view_model.dart';
+import '../view_models/session_rating_store.dart';
 import '../view_models/sign_up_view_model.dart';
 import '../widgets/common_app_bar.dart';
 import '../widgets/movielog_button.dart';
@@ -93,7 +94,8 @@ class AppRouter {
         // 영화 상세 — 하단 탭 없이 전체 화면으로 표시 (예: /movies/969681)
         // 경로의 movieId는 TMDB id이고, ViewModel이 TMDB 상세를 불러옵니다.
         // 상세 정보를 extra로 함께 받으면(홈 추천 신작 Mock) 그대로 보여줍니다.
-        // 평점 등록은 path의 TMDB id와 학습용 세션의 memberId로 보냅니다.
+        // 평점 등록은 path의 TMDB id만 보내고 회원은 서버가 JWT로 식별합니다. (memberId 없음)
+        // 등록 응답의 평점은 이번 로그인 세션의 "내가 등록한 평점"에 보관합니다.
         GoRoute(
           path: '/movies/:movieId',
           builder: (context, state) {
@@ -113,7 +115,10 @@ class AppRouter {
                 movieId: movieId,
                 initialMovie: initialMovie,
                 ratingService: context.read<RatingApiService>(),
-                memberId: context.read<LearningMemberSession>().memberId,
+                onRatingCreated: (rating) => context
+                    .read<SessionRatingStore>()
+                    .upsert(auth.sessionVersion, rating),
+                onSessionExpired: auth.expireSession,
               )..load(),
               child: MovieDetailScreen(movieId: movieId),
             );
@@ -188,19 +193,23 @@ class AppRouter {
                 ),
                 // 내가 등록한 평점 (최종 경로 /my/ratings)
                 // root Navigator 위에 push해 하단 NavigationBar를 가립니다.
-                // 7주차 — 6주차 고정 ID 1 대신 회원가입으로 얻은 학습용 memberId를 씁니다.
+                // 8주차 — 이번 세션 등록분 + 같은 계정으로 가입했으면 공개 조회(memberId)를 합칩니다.
+                // 다른 계정의 memberId는 쓰지 않습니다. 쓰기는 모두 JWT로 보냅니다.
                 GoRoute(
                   path: 'ratings',
                   parentNavigatorKey: rootNavigatorKey,
                   builder: (context, state) {
-                    final id = context.read<LearningMemberSession>().memberId;
-                    if (id == null) return const MyRatingsSignUpRequired();
+                    final memberId = context
+                        .read<LearningMemberSession>()
+                        .memberIdFor(auth.member?.email);
                     return ChangeNotifierProvider<MyRatingsViewModel>(
                       create: (context) => MyRatingsViewModel(
                         context.read<RatingApiService>(),
                         context.read<TmdbMovieService>(),
-                        id,
-                        currentMemberId: id,
+                        memberId: memberId,
+                        sessionRatings: context.read<SessionRatingStore>(),
+                        sessionVersion: auth.sessionVersion,
+                        onSessionExpired: auth.expireSession,
                       )..load(),
                       child: const MyRatingsScreen(),
                     );

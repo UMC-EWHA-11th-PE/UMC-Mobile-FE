@@ -15,13 +15,9 @@ import 'fake_tmdb.dart';
 
 const _memberId = 42;
 
-MyRatingsViewModel _viewModel(FakeRatingServer server, {int? current}) =>
-    MyRatingsViewModel(
-      server.service,
-      fakeTmdbService(),
-      _memberId,
-      currentMemberId: current,
-    );
+/// 같은 계정으로 가입해 memberId를 아는 경우 — 공개 조회 + JWT 쓰기
+MyRatingsViewModel _viewModel(FakeRatingServer server) =>
+    MyRatingsViewModel(server.service, fakeTmdbService(), memberId: _memberId);
 
 FakeRatingServer _serverWithTwo() => FakeRatingServer(
   ratings: [
@@ -32,24 +28,21 @@ FakeRatingServer _serverWithTwo() => FakeRatingServer(
 
 void main() {
   group('MyRatingsViewModel 수정·삭제', () {
-    test('본인 목록일 때만 canModify', () {
-      final server = FakeRatingServer();
-      expect(_viewModel(server, current: _memberId).canModify, isTrue);
-      expect(_viewModel(server, current: 1).canModify, isFalse);
-      expect(_viewModel(server).canModify, isFalse);
+    test('로그인한 내 평점 화면이라 수정 가능 — 소유자 확인은 서버가 토큰으로(RATING403_1)', () {
+      expect(_viewModel(FakeRatingServer()).canModify, isTrue);
     });
 
     test('수정 성공 → PATCH 뒤 GET으로 목록을 다시 맞춘다', () async {
       final server = _serverWithTwo();
-      final viewModel = _viewModel(server, current: _memberId);
+      final viewModel = _viewModel(server);
       await viewModel.load();
       server.calls.clear();
 
       await viewModel.updateRating(ratingId: 2, score: 5, comment: null);
 
       expect(server.calls, [
-        'PATCH /v6/members/42/ratings/2',
-        'GET /v6/members/42/ratings',
+        'PATCH /v7/ratings/2',
+        'GET /v7/members/42/ratings',
       ]);
       expect(viewModel.ratings.first.rating.score, 5);
       expect(viewModel.ratings.first.rating.comment, isNull);
@@ -57,18 +50,18 @@ void main() {
 
     test('마지막 평점을 삭제하면 다시 조회한 결과가 empty', () async {
       final server = FakeRatingServer(ratings: [fakeRatingJson(ratingId: 3)]);
-      final viewModel = _viewModel(server, current: _memberId);
+      final viewModel = _viewModel(server);
       await viewModel.load();
 
       await viewModel.deleteRating(3);
 
-      expect(server.calls.last, 'GET /v6/members/42/ratings');
+      expect(server.calls.last, 'GET /v7/members/42/ratings');
       expect(viewModel.status, MyRatingsLoadStatus.empty);
     });
 
     test('400은 서버 문구로 WriteFailure를 던지고 다시 조회하지 않는다', () async {
       final server = _serverWithTwo();
-      final viewModel = _viewModel(server, current: _memberId);
+      final viewModel = _viewModel(server);
       await viewModel.load();
       server
         ..calls.clear()
@@ -88,19 +81,19 @@ void main() {
           ),
         ),
       );
-      expect(server.calls, ['PATCH /v6/members/42/ratings/2']);
+      expect(server.calls, ['PATCH /v7/ratings/2']);
     });
 
     test('403·404는 WriteFailure를 던지고 목록을 다시 조회해 서버와 맞춘다', () async {
       final server = _serverWithTwo();
-      final viewModel = _viewModel(server, current: _memberId);
+      final viewModel = _viewModel(server);
       await viewModel.load();
       server
         ..calls.clear()
         ..writeError = (
           status: 404,
-          code: 'COMMON404',
-          message: '존재하지 않는 평점입니다.',
+          code: 'RATING404_1',
+          message: '해당 평점을 찾을 수 없습니다.',
         );
 
       await expectLater(
@@ -108,14 +101,14 @@ void main() {
         throwsA(isA<WriteFailure>()),
       );
       expect(server.calls, [
-        'DELETE /v6/members/42/ratings/2',
-        'GET /v6/members/42/ratings',
+        'DELETE /v7/ratings/2',
+        'GET /v7/members/42/ratings',
       ]);
     });
 
     test('저장 성공 후 GET만 실패하면 던지지 않고 refreshWarning, 다시 조회가 성공하면 지운다', () async {
       final server = _serverWithTwo();
-      final viewModel = _viewModel(server, current: _memberId);
+      final viewModel = _viewModel(server);
       await viewModel.load();
       server.failGet = true;
 
@@ -134,11 +127,7 @@ void main() {
   });
 
   group('내가 등록한 평점 화면 수정·삭제', () {
-    Future<void> pump(
-      WidgetTester tester,
-      FakeRatingServer server, {
-      int? current = _memberId,
-    }) async {
+    Future<void> pump(WidgetTester tester, FakeRatingServer server) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -146,19 +135,13 @@ void main() {
         MaterialApp(
           theme: AppTheme.light,
           home: ChangeNotifierProvider<MyRatingsViewModel>(
-            create: (_) => _viewModel(server, current: current)..load(),
+            create: (_) => _viewModel(server)..load(),
             child: const MyRatingsScreen(),
           ),
         ),
       );
       await tester.pumpAndSettle();
     }
-
-    testWidgets('본인 목록이 아니면 수정·삭제 버튼을 그리지 않는다', (tester) async {
-      await pump(tester, _serverWithTwo(), current: 1);
-      expect(find.text('수정'), findsNothing);
-      expect(find.text('삭제'), findsNothing);
-    });
 
     testWidgets('본인 목록이면 카드마다 수정·삭제 버튼을 그린다 — W7-REQ 위치·크기', (tester) async {
       await pump(tester, _serverWithTwo());
@@ -224,8 +207,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(server.calls.skip(1), [
-        'PATCH /v6/members/42/ratings/2',
-        'GET /v6/members/42/ratings',
+        'PATCH /v7/ratings/2',
+        'GET /v7/members/42/ratings',
       ]);
       expect(server.bodies.single, {'score': 2, 'comment': '두 번 보니 별로'});
       expect(find.byType(RatingDialog), findsNothing);
@@ -261,8 +244,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(server.calls, [
-        'DELETE /v6/members/42/ratings/3',
-        'GET /v6/members/42/ratings',
+        'DELETE /v7/ratings/3',
+        'GET /v7/members/42/ratings',
       ]);
       expect(find.byType(Dialog), findsNothing);
       expect(find.text('아직 등록된 평점이 없습니다.'), findsOneWidget);
@@ -276,7 +259,7 @@ void main() {
       await pump(tester, server);
       server.writeError = (
         status: 403,
-        code: 'COMMON403',
+        code: 'RATING403_1',
         message: '본인이 작성한 평점만 수정하거나 삭제할 수 있습니다.',
       );
 
@@ -331,7 +314,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // 다시 시도는 GET만 보냅니다.
-      expect(server.calls, ['GET /v6/members/42/ratings']);
+      expect(server.calls, ['GET /v7/members/42/ratings']);
       expect(find.text('수정'), findsOneWidget);
     });
   });
@@ -347,7 +330,7 @@ void main() {
 
     test('선택한 평점을 하나씩 DELETE하고 목록은 한 번만 다시 조회한다', () async {
       final server = serverWithThree();
-      final viewModel = _viewModel(server, current: _memberId);
+      final viewModel = _viewModel(server);
       await viewModel.load();
       server.calls.clear();
 
@@ -360,20 +343,13 @@ void main() {
 
       expect(failed, 0);
       expect(server.calls, [
-        'DELETE /v6/members/42/ratings/3',
-        'DELETE /v6/members/42/ratings/2',
-        'GET /v6/members/42/ratings',
+        'DELETE /v7/ratings/3',
+        'DELETE /v7/ratings/2',
+        'GET /v7/members/42/ratings',
       ]);
       expect(viewModel.ratings.map((e) => e.rating.ratingId), [1]);
       expect(viewModel.isSelecting, isFalse);
       expect(viewModel.isBulkDeleting, isFalse);
-    });
-
-    test('본인 목록이 아니면 선택 모드를 시작하지 않는다', () async {
-      final viewModel = _viewModel(serverWithThree(), current: 1);
-      await viewModel.load();
-      viewModel.startSelection(3);
-      expect(viewModel.isSelecting, isFalse);
     });
 
     testWidgets('길게 누르면 선택 모드 → 확인 Dialog → 삭제 중 화면 전체 로딩 → 목록 갱신', (
@@ -387,7 +363,7 @@ void main() {
         MaterialApp(
           theme: AppTheme.light,
           home: ChangeNotifierProvider<MyRatingsViewModel>(
-            create: (_) => _viewModel(server, current: _memberId)..load(),
+            create: (_) => _viewModel(server)..load(),
             child: const MyRatingsScreen(),
           ),
         ),
@@ -452,7 +428,7 @@ void main() {
 
     test('일부만 실패하면 실패한 평점만 선택된 채로 남는다', () async {
       final server = serverWithThree()..failingRatingIds.add(2);
-      final viewModel = _viewModel(server, current: _memberId);
+      final viewModel = _viewModel(server);
       await viewModel.load();
       viewModel
         ..startSelection(3)

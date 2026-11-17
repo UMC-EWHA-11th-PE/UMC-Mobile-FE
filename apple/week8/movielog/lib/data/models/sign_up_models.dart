@@ -9,7 +9,7 @@ class SignUpResult {
     required this.nickname,
   });
 
-  /// v6 평점 path에 쓰는 학습용 식별자 — 이 값만 알고 있다고 인증된 것은 아닙니다.
+  /// 공개 "유저별 평점 조회" path에 쓰는 식별자 — 인증 수단이 아닙니다. (쓰기는 JWT로만)
   final int memberId;
   final String email;
   final String nickname;

@@ -159,7 +159,7 @@ class AuthViewModel extends ChangeNotifier {
       if (!_isCurrent(version)) return;
       final code = apiErrorCode(error);
       // 토큰 없음·무효·만료 — 이 토큰으로는 다시 시도해도 성공할 수 없으므로 세션을 정리합니다.
-      if (_isSessionExpiredCode(code)) {
+      if (isSessionExpiredCode(code)) {
         await _clearCurrentSession();
         return;
       }
@@ -261,7 +261,7 @@ class AuthViewModel extends ChangeNotifier {
       memberStatus = MemberLoadStatus.success;
     } on DioException catch (error) {
       if (!_isCurrent(version)) return;
-      if (_isSessionExpiredCode(apiErrorCode(error))) {
+      if (isSessionExpiredCode(apiErrorCode(error))) {
         // 세션 만료: signedOut이 되어 Router가 /login으로 보냅니다.
         await _clearCurrentSession();
         return;
@@ -296,9 +296,6 @@ class AuthViewModel extends ChangeNotifier {
   /// 사용자가 직접 누르는 로그아웃 — 만료 안내 없이 세션만 비웁니다.
   /// MovieLog 세션만 정리하고 TMDB 설정·영화 목록은 건드리지 않습니다.
   Future<void> logout() => _clearCurrentSession(expired: false);
-
-  static bool _isSessionExpiredCode(String? code) =>
-      code == 'AUTH401_2' || code == 'AUTH401_3' || code == 'AUTH401_4';
 
   /// 토큰 만료·무효([expired] true) 또는 로그아웃으로 현재 세션을 비웁니다.
   ///

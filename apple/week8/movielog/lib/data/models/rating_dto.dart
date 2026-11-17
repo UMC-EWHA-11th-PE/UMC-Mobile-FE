@@ -1,4 +1,4 @@
-/// v6 회원별 평점 조회 API(GET /v6/members/{memberId}/ratings) 응답 배열의 항목 하나입니다.
+/// 평점 하나 — 공개 조회(GET /v7/members/{memberId}/ratings) 배열의 항목이자 v7 등록·수정 응답의 result입니다.
 ///
 /// 영화 제목·포스터는 없으므로 [movieId]로 TMDB 영화와 연결합니다.
 ///

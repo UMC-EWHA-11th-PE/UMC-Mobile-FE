@@ -4,7 +4,7 @@ import 'package:movielog/data/services/rating_api_service.dart';
 
 import 'fake_sign_up.dart';
 
-/// 평점 하나를 v6 조회 응답 모양(JSON)으로 만듭니다.
+/// 평점 하나를 v7 응답 모양(JSON)으로 만듭니다. (공개 조회 배열 항목 = 등록·수정 result)
 Map<String, Object?> fakeRatingJson({
   int ratingId = 12,
   int movieId = 550,
@@ -20,10 +20,14 @@ Map<String, Object?> fakeRatingJson({
   'updatedAt': createdAt,
 };
 
-/// v6 공통 오류 하나 — 상태 코드, code, message
+/// 공통 오류 하나 — 상태 코드, code, message
 typedef FakeApiError = ({int status, String code, String message});
 
-/// 서버 없이 v6 회원별 평점 API(조회·등록·수정·삭제)를 흉내 내는 가짜 서버입니다.
+/// 서버 없이 v7 평점 API를 흉내 내는 가짜 서버입니다.
+/// - 공개 조회 GET /v7/members/{memberId}/ratings → 직접 배열
+/// - 등록 POST /v7/ratings → 201 + result 평점, 수정 PATCH /v7/ratings/{id} → 200 + result 평점
+/// - 삭제 DELETE /v7/ratings/{id} → 200 + result null
+/// 공개·보호 Client 대신 같은 가짜 Dio 하나를 두 자리에 넣습니다. (토큰 부착은 auth_interceptor_test에서 확인)
 ///
 /// 쓰기가 성공하면 [ratings]를 실제로 바꾸므로, 쓰기 뒤 다시 조회한 결과로 화면을 검증할 수 있습니다.
 /// 필드를 테스트 도중 바꿔 "저장은 성공했지만 다시 조회만 실패" 같은 상황을 만들 수 있습니다.
@@ -69,10 +73,10 @@ class FakeRatingServer {
 
   int _nextRatingId = 100;
 
-  late final RatingApiService service = RatingApiService(
-    Dio(BaseOptions(baseUrl: 'http://localhost:8080'))
-      ..interceptors.add(InterceptorsWrapper(onRequest: _handle)),
-  );
+  late final Dio _dio = Dio(BaseOptions(baseUrl: 'http://localhost:8080'))
+    ..interceptors.add(InterceptorsWrapper(onRequest: _handle));
+
+  late final RatingApiService service = RatingApiService(_dio, _dio);
 
   Future<void> _handle(
     RequestOptions options,
@@ -106,7 +110,13 @@ class FakeRatingServer {
       final status = getStatusCode;
       if (status != null) {
         return handler.reject(
-          badResponse(status, fakeCommonError('COMMON$status', '테스트용 오류')),
+          badResponse(
+            status,
+            fakeCommonError(
+              status == 404 ? 'MEMBER404_1' : 'COMMON$status',
+              '테스트용 오류',
+            ),
+          ),
         );
       }
       return handler.resolve(
@@ -132,15 +142,13 @@ class FakeRatingServer {
     switch (options.method) {
       case 'POST':
         final body = options.data as Map<String, dynamic>;
-        ratings.insert(
-          0,
-          fakeRatingJson(
-            ratingId: _nextRatingId++,
-            movieId: body['movieId'] as int,
-            score: body['score'] as int,
-            comment: body['comment'] as String?,
-          ),
+        final created = fakeRatingJson(
+          ratingId: _nextRatingId++,
+          movieId: body['movieId'] as int,
+          score: body['score'] as int,
+          comment: body['comment'] as String?,
         );
+        ratings.insert(0, created);
         return handler.resolve(
           Response(
             requestOptions: options,
@@ -148,21 +156,27 @@ class FakeRatingServer {
             data: {
               'isSuccess': true,
               'code': 'COMMON201',
-              'message': '평점이 등록되었습니다.',
-              'result': null,
+              'message': '평점을 등록했습니다.',
+              'result': created,
             },
           ),
         );
       case 'PATCH':
         final body = options.data as Map<String, dynamic>;
         final index = ratings.indexWhere((r) => r['ratingId'] == ratingId);
-        if (index >= 0) {
-          ratings[index] = {
-            ...ratings[index],
-            'score': body['score'],
-            'comment': body['comment'],
-          };
+        if (index < 0) {
+          return handler.reject(
+            badResponse(
+              404,
+              fakeCommonError('RATING404_1', '해당 평점을 찾을 수 없습니다.'),
+            ),
+          );
         }
+        ratings[index] = {
+          ...ratings[index],
+          'score': body['score'],
+          'comment': body['comment'],
+        };
         return handler.resolve(
           Response(
             requestOptions: options,
@@ -170,16 +184,25 @@ class FakeRatingServer {
             data: {
               'isSuccess': true,
               'code': 'COMMON200',
-              'message': '평점이 수정되었습니다.',
-              'result': null,
+              'message': '평점을 수정했습니다.',
+              'result': ratings[index],
             },
           ),
         );
       case 'DELETE':
         ratings.removeWhere((r) => r['ratingId'] == ratingId);
-        // 204는 body가 없습니다.
+        // v7 삭제 성공은 204가 아니라 200 + result null입니다.
         return handler.resolve(
-          Response(requestOptions: options, statusCode: 204),
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'isSuccess': true,
+              'code': 'COMMON200',
+              'message': '평점을 삭제했습니다.',
+              'result': null,
+            },
+          ),
         );
     }
   }
@@ -188,7 +211,7 @@ class FakeRatingServer {
 /// 조회만 필요한 테스트용 간단 버전 — [FakeRatingServer]를 감쌉니다.
 ///
 /// - [ratings]를 배열 그대로 응답 (기본값은 빈 배열)
-/// - [statusCode]가 있으면 v6 공통 오류 형식으로 그 상태 코드 응답 (400·404 등)
+/// - [statusCode]가 있으면 공통 오류 형식으로 그 상태 코드 응답 (400·404 등)
 /// - [fail]이 true면 연결 오류(DioException)
 /// - [gate]가 있으면 그 Future가 끝날 때까지 응답을 미룸 — Loading 상태 확인용
 /// - [requests]에 보낸 요청 path를 순서대로 기록

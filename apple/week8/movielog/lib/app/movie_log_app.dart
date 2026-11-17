@@ -15,6 +15,7 @@ import '../router/app_router.dart';
 import '../theme/app_theme.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/learning_member_session.dart';
+import '../view_models/session_rating_store.dart';
 
 class MovieLogApp extends StatelessWidget {
   const MovieLogApp({
@@ -59,7 +60,7 @@ class MovieLogApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<TokenStorage>.value(value: tokenStorage),
-        // 회원가입으로 얻은 학습용 memberId — 영화 상세·마이페이지 Route가 같은 값을 읽습니다.
+        // 이 앱에서 가입한 계정의 memberId(+email) — 같은 계정일 때만 공개 평점 조회에 씁니다.
         ChangeNotifierProvider<LearningMemberSession>(
           create: (_) => learningMemberSession ?? LearningMemberSession(),
         ),
@@ -76,10 +77,13 @@ class MovieLogApp extends StatelessWidget {
         Provider<MemberApiService>(
           create: (_) => memberApiService ?? MemberApiService(authClient),
         ),
-        // 평점은 아직 v6(memberId path) — v7 보호 요청으로 옮길 때 authClient도 함께 받습니다.
+        // 평점 — 공개 조회는 publicClient, 등록·수정·삭제는 authClient (Service가 메서드별로 결정)
         Provider<RatingApiService>(
-          create: (_) => ratingApiService ?? RatingApiService(publicClient),
+          create: (_) =>
+              ratingApiService ?? RatingApiService(publicClient, authClient),
         ),
+        // 이번 로그인 세션에서 등록·수정한 평점 (v7에는 토큰 기반 내 평점 목록 GET이 없음)
+        Provider<SessionRatingStore>(create: (_) => SessionRatingStore()),
         // Service를 주입받는 ViewModel — redirect와 스플래시·로그인 화면이 함께 읽습니다.
         if (injectedAuth != null)
           ChangeNotifierProvider<AuthViewModel>.value(value: injectedAuth)
