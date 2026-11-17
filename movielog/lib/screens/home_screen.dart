@@ -138,7 +138,10 @@ class _HomeContent extends StatelessWidget {
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: () =>
-                                context.push('/movies/${featured.id}'),
+                                context.push(
+                              '/movies/${featured.id}',
+                              extra: featured,
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.violet,
                               foregroundColor: AppColors.white,
