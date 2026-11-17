@@ -29,6 +29,16 @@ void main() {
       expect(store.ratings(2), isEmpty);
       expect(store.ratings(1), isEmpty);
     });
+
+    test('이전 세션에서 늦게 도착한 등록·수정·삭제는 새 세션 보관분을 바꾸지 않는다', () {
+      final store = SessionRatingStore()..upsert(3, _rating(10));
+
+      store
+        ..upsert(2, _rating(99)) // 로그아웃 전 요청의 늦은 응답
+        ..remove(2, 10);
+
+      expect(store.ratings(3).map((r) => r.ratingId), [10]);
+    });
   });
 
   group('LearningMemberSession', () {

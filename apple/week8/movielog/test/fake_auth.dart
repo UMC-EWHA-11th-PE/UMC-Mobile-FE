@@ -21,6 +21,9 @@ class InMemoryTokenStorage implements TokenStorage {
 
   /// true면 저장에서 예외 — 로그인 후 토큰 저장 실패 확인용
   bool failSave = false;
+
+  /// true면 삭제에서 예외 — 로그아웃·만료 때 토큰 삭제 실패 확인용
+  bool failDelete = false;
   int deleteCount = 0;
 
   @override
@@ -38,6 +41,7 @@ class InMemoryTokenStorage implements TokenStorage {
   @override
   Future<void> deleteAccessToken() async {
     deleteCount++;
+    if (failDelete) throw Exception('keychain unavailable');
     token = null;
   }
 }

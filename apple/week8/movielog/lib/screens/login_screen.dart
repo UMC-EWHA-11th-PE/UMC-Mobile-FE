@@ -40,17 +40,28 @@ class _LoginScreenState extends State<LoginScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _showSessionExpired());
   }
 
-  /// 만료로 쫓겨난 경우에만 한 번 안내합니다. 직접 로그아웃·AUTH401_1은 sessionExpired가 꺼져 있습니다.
+  /// 세션 정리와 함께 온 안내를 한 번씩만 보여줍니다.
+  /// - 토큰 삭제 실패: 저장소 문제를 알려야 하므로 만료 안내보다 먼저 보여줍니다.
+  /// - 만료로 쫓겨난 경우: 직접 로그아웃·AUTH401_1은 sessionExpired가 꺼져 있습니다.
   void _showSessionExpired() {
-    if (!mounted || !_auth.sessionExpired) return;
-    _auth.consumeSessionExpired(); // 같은 Snackbar가 반복되지 않게 바로 끕니다.
+    if (!mounted) return;
+    final String text;
+    if (_auth.storageClearFailed) {
+      text = _auth.message ?? '저장된 인증 정보를 지우지 못했어요.';
+      // 같은 정리에서 온 만료 안내도 함께 소비해 Snackbar가 겹치지 않게 합니다.
+      _auth
+        ..consumeStorageClearFailed()
+        ..consumeSessionExpired();
+    } else if (_auth.sessionExpired) {
+      text = '로그인이 만료됐어요. 다시 로그인해 주세요.';
+      _auth.consumeSessionExpired(); // 같은 Snackbar가 반복되지 않게 바로 끕니다.
+    } else {
+      return;
+    }
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        const SnackBar(
-          content: Text('로그인이 만료됐어요. 다시 로그인해 주세요.'),
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
       );
   }
 

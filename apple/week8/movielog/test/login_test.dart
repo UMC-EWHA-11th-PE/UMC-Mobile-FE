@@ -414,5 +414,70 @@ void main() {
       expect(find.text(expiredText), findsNothing);
       expect(auth.sessionExpired, isFalse);
     });
+
+    testWidgets('로그아웃 때 토큰 삭제가 실패하면 만료가 아니라 저장소 안내를 한 번 보여준다', (tester) async {
+      final storage = InMemoryTokenStorage('token');
+      final auth = await signedInAuth(storage: storage);
+      storage.failDelete = true;
+      await pumpApp(tester, auth);
+      appRouter(tester).go('/my');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('로그아웃'));
+      await tester.pumpAndSettle();
+
+      const storageText = '저장된 인증 정보를 지우지 못했어요. 앱 재실행 전에 저장소 상태를 확인해 주세요.';
+      expect(location(tester), '/login');
+      expect(auth.status, AuthStatus.signedOut); // 메모리 세션은 비움
+      expect(find.text(storageText), findsOneWidget);
+      expect(find.text(expiredText), findsNothing);
+      expect(auth.storageClearFailed, isFalse); // 보여준 뒤 꺼짐
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).at(0), 'a@b.com');
+      await tester.pumpAndSettle();
+      expect(find.text(storageText), findsNothing);
+    });
+
+    testWidgets('만료 정리 중 토큰 삭제도 실패하면 저장소 안내 하나만 보여준다', (tester) async {
+      final storage = InMemoryTokenStorage('token');
+      final auth = await signedInAuth(storage: storage);
+      storage.failDelete = true;
+      await pumpApp(tester, auth);
+
+      await auth.expireSession();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('저장된 인증 정보를 지우지 못했어요. 앱 재실행 전에 저장소 상태를 확인해 주세요.'),
+        findsOneWidget,
+      );
+      expect(find.text(expiredText), findsNothing);
+      expect(auth.sessionExpired, isFalse);
+    });
+
+    testWidgets('로그인 직후 홈을 거치지 않고 마이 탭으로 가도 닉네임이 보인다 (MainScreen.loadMember)', (
+      tester,
+    ) async {
+      final memberApi = FakeMemberApiService();
+      final loggedIn = fakeAuth(token: null, memberApi: memberApi);
+      await loggedIn.initialize();
+      await pumpApp(tester, loggedIn);
+
+      await tester.enterText(find.byType(TextField).at(0), 'movie@example.com');
+      await tester.enterText(find.byType(TextField).at(1), 'Umc1234!');
+      await tester.pump();
+      await tester.tap(find.byType(MovieLogButton));
+      // 홈이 그려지기 전에 바로 마이 탭으로 이동합니다.
+      await tester.pump();
+      appRouter(tester).go('/my');
+      await tester.pumpAndSettle();
+
+      expect(location(tester), '/my');
+      expect(memberApi.calls, 1); // 로그인 후 GET me는 한 번
+      expect(loggedIn.member?.nickname, '밍고');
+      expect(find.text('밍고'), findsOneWidget);
+    });
   });
 }

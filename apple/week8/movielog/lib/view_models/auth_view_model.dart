@@ -69,6 +69,10 @@ class AuthViewModel extends ChangeNotifier {
   /// 서버 401로 세션이 정리됐는지 — 사용자가 직접 로그아웃한 경우와 구별합니다.
   bool sessionExpired = false;
 
+  /// 로그아웃·만료 때 기기에 저장된 토큰을 지우지 못했는지 — 로그인 화면이 한 번 안내합니다.
+  /// 메모리 세션은 비웠으므로 앱은 signedOut이지만, 저장소 상태를 사용자에게 알려야 합니다.
+  bool storageClearFailed = false;
+
   /// 저장된 토큰을 지우는 중 — 이 사이에 로그인·복원을 시작하지 않습니다.
   bool storageCleanupInProgress = false;
 
@@ -290,6 +294,11 @@ class AuthViewModel extends ChangeNotifier {
     sessionExpired = false;
   }
 
+  /// 로그인 화면이 저장소 정리 실패 안내를 보여준 뒤 호출합니다.
+  void consumeStorageClearFailed() {
+    storageClearFailed = false;
+  }
+
   /// 다른 ViewModel이 보호 요청에서 401(AUTH401_2/3/4)을 받았을 때 세션 정리를 요청하는 공개 진입점입니다.
   Future<void> expireSession() => _clearCurrentSession(expired: true);
 
@@ -307,6 +316,7 @@ class AuthViewModel extends ChangeNotifier {
     member = null;
     memberStatus = MemberLoadStatus.idle;
     sessionExpired = expired;
+    storageClearFailed = false;
     status = AuthStatus.signedOut;
     message = null;
     loginError = null;
@@ -321,6 +331,7 @@ class AuthViewModel extends ChangeNotifier {
       await _storage.deleteAccessToken();
     } catch (_) {
       if (_isCurrent(version)) {
+        storageClearFailed = true;
         message = '저장된 인증 정보를 지우지 못했어요. 앱 재실행 전에 저장소 상태를 확인해 주세요.';
       }
     } finally {
