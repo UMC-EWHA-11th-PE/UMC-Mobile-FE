@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:movielog/screens/splash_screen.dart';
 import 'package:movielog/theme/app_theme.dart';
@@ -35,5 +36,19 @@ void main() {
 
     expect(find.text('인증 저장소를 읽지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
     expect(find.text('로그인 상태를 확인하지 못했어요.'), findsNothing);
+  });
+
+  testWidgets('확인 중(인디케이터만 있을 때)에도 로고·문구가 화면 가운데에 온다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    for (final screen in [SplashScreen(onRetry: () {}), const SplashScreen()]) {
+      await tester.pumpWidget(_wrap(screen));
+      for (final text in ['FLUTTER 8주차', '영화의 순간을\n기록하세요']) {
+        expect(tester.getCenter(find.text(text)).dx, 390 / 2);
+      }
+      expect(tester.getCenter(find.byType(SvgPicture)).dx, 390 / 2);
+    }
   });
 }
