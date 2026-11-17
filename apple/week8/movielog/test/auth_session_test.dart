@@ -36,7 +36,7 @@ void main() {
     });
 
     for (final code in ['AUTH401_2', 'AUTH401_3', 'AUTH401_4']) {
-      test('$code면 토큰을 지우고 만료 안내와 함께 signedOut', () async {
+      test('$code면 토큰을 지우고 만료(sessionExpired)로 signedOut', () async {
         final storage = InMemoryTokenStorage('expired-token');
         final auth = fakeAuth(
           storage: storage,
@@ -47,7 +47,7 @@ void main() {
 
         expect(auth.status, AuthStatus.signedOut);
         expect(storage.token, isNull);
-        expect(auth.message, '로그인이 만료되었어요. 다시 로그인해 주세요.');
+        expect(auth.sessionExpired, isTrue);
       });
     }
 
@@ -117,8 +117,9 @@ void main() {
       var failCleanup = true;
       final api = FakeMemberApiService();
       final auth = AuthViewModel(
-        InMemoryTokenStorage('token'),
+        FakeAuthApiService(),
         api,
+        InMemoryTokenStorage('token'),
         storageCleanup: () async {
           cleanupCalls++;
           if (failCleanup) throw Exception('keychain unavailable');
@@ -199,9 +200,11 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    final api = FakeMemberApiService(connectionError: true);
+    final gate = Completer<void>();
+    final api = FakeMemberApiService(connectionError: true, gate: gate.future);
     final auth = fakeAuth(memberApi: api);
 
+    // 확인 전(initializing) 세션을 넘기면 앱이 첫 프레임 뒤 복원을 시작합니다.
     await tester.pumpWidget(
       MovieLogApp(authViewModel: auth, tmdbMovieService: fakeTmdbService()),
     );
@@ -210,13 +213,15 @@ void main() {
     String location() =>
         appRouter(tester).routerDelegate.currentConfiguration.uri.path;
 
-    // 확인 전(initializing): 스플래시 + 로딩
+    // /members/me 응답 전: 스플래시 + 로딩
+    expect(api.calls, 1);
     expect(location(), '/start');
     expect(find.text('FLUTTER 8주차'), findsOneWidget);
     expect(find.text('다시 시도'), findsNothing);
 
     // 연결 실패 → 같은 스플래시에서 다시 시도 버튼
-    await auth.initialize();
+    gate.complete();
+    await tester.pump();
     await tester.pump();
     expect(location(), '/start');
     expect(find.text('로그인 상태를 확인하지 못했어요. 다시 시도해 주세요.'), findsOneWidget);

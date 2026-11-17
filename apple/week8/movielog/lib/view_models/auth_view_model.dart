@@ -2,9 +2,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../core/network/api_error.dart';
-import '../data/local/auth_token_storage.dart';
 import '../data/local/secure_storage_cleanup.dart';
+import '../data/local/token_storage.dart';
+import '../data/models/login_models.dart';
 import '../data/models/member_info.dart';
+import '../data/services/auth_api_service.dart';
 import '../data/services/member_api_service.dart';
 
 /// 앱 전체의 MovieLog 로그인 상태 — GoRouter redirect가 이 값만 보고 화면을 정합니다.
@@ -12,55 +14,73 @@ enum AuthStatus {
   /// 저장된 토큰을 읽고 서버에 확인하는 중 → 스플래시(로딩)
   initializing,
 
-  /// 저장소·네트워크 문제로 확인하지 못함 → 스플래시(다시 시도). 토큰은 지우지 않습니다.
-  retryRequired,
-
   /// 토큰이 없거나 서버가 무효(AUTH401_2/3/4)라고 답함 → 로그인·회원가입만 허용
   signedOut,
 
   /// 로그인 요청 중 → 로그인 화면 유지
   authenticating,
 
-  /// `/members/me` 서버 검증까지 끝남 → 보호 화면 허용
+  /// 로그인 성공(토큰 저장) 또는 `/members/me` 검증 완료 → 보호 화면 허용
   signedIn,
+
+  /// 저장소·네트워크 문제로 확인하지 못함 → 스플래시(다시 시도). 토큰은 지우지 않습니다.
+  retryRequired,
 }
 
 /// 내 정보(`/members/me`) 불러오기 상태 — 로그인 여부와 따로 관리합니다.
-enum MemberLoadStatus { idle, loading, success, failure }
+enum MemberLoadStatus { idle, loading, success, error }
 
 /// MovieLog 사용자 세션을 관리합니다.
 ///
-/// - 토큰 문자열이 있다는 이유만으로 signedIn을 확정하지 않고, `/members/me`로 검증합니다.
+/// - 신규 로그인: 로그인 API 성공 → 토큰 저장 → signedIn → MainScreen이 [loadMember]
+/// - 앱 재시작: [restoreSession]이 `/members/me` 검증을 마친 뒤에만 signedIn
 /// - 네트워크 실패는 retryRequired(토큰 유지), 토큰 무효 401은 signedOut(토큰 삭제)으로 구별합니다.
 /// - [_sessionVersion]으로 이전 세션에서 늦게 도착한 응답이 새 세션을 덮어쓰지 않게 합니다.
-/// - 로그아웃은 MovieLog 세션만 비웁니다. TMDB 설정·영화 목록은 건드리지 않습니다.
+/// - 화면 이동은 하지 않습니다. 상태가 바뀌면 Router가 redirect로 화면을 정합니다.
+/// - 로그아웃·만료는 MovieLog 세션만 비웁니다. TMDB 설정·영화 목록은 건드리지 않습니다.
 class AuthViewModel extends ChangeNotifier {
   AuthViewModel(
-    this._storage,
-    this._memberApi, {
+    this._authApi,
+    this._memberApi,
+    this._storage, {
     Future<void> Function()? storageCleanup,
-  }) : _storageCleanup =
+  }) : _installCleanup =
            storageCleanup ?? clearStaleSecureStorageOnFirstInstall;
 
-  final AuthTokenStorage _storage;
+  final AuthApiService _authApi;
   final MemberApiService _memberApi;
+  final TokenStorage _storage;
 
   /// 재설치 후 첫 실행이면 Keychain에 남은 이전 설치의 토큰을 지웁니다.
-  final Future<void> Function() _storageCleanup;
+  final Future<void> Function() _installCleanup;
 
   AuthStatus status = AuthStatus.initializing;
 
-  /// 스플래시·로그인 화면에 보여줄 안내 문구 (확인 실패, 로그인 만료 등)
-  String? message;
-
-  /// 서버가 확인해 준 내 정보. signedIn이 아니면 null
+  /// 서버가 확인해 준 내 정보. 신규 로그인 직후에는 [loadMember] 전까지 null
   MemberInfo? member;
   MemberLoadStatus memberStatus = MemberLoadStatus.idle;
 
+  /// 스플래시 재시도 문구, 로그인 요청 실패, 내 정보 실패 등 화면 전체 안내 문구
+  String? message;
+
+  /// 로그인 Form 아래(비밀번호 입력칸)에 보여줄 입력 오류 — AUTH401_1, COMMON400
+  String? loginError;
+
+  /// 서버 401로 세션이 정리됐는지 — 사용자가 직접 로그아웃한 경우와 구별합니다.
+  bool sessionExpired = false;
+
+  /// 저장된 토큰을 지우는 중 — 이 사이에 로그인·복원을 시작하지 않습니다.
+  bool storageCleanupInProgress = false;
+
   int _sessionVersion = 0;
+  int get sessionVersion => _sessionVersion;
+
   bool _disposed = false;
-  bool _storageCleaned = false;
-  bool _storageCleanupInProgress = false;
+  bool _installCleaned = false;
+  bool _installCleanupInProgress = false;
+
+  /// 진행 중인 토큰 저장 — 세션 정리가 저장이 끝난 뒤 삭제하도록 기다립니다.
+  Future<void>? _tokenWrite;
 
   bool _isCurrent(int version) => !_disposed && version == _sessionVersion;
 
@@ -70,26 +90,26 @@ class AuthViewModel extends ChangeNotifier {
 
   /// 앱 시작 시 한 번 호출합니다. 스플래시의 '다시 시도'도 이 함수를 다시 부릅니다.
   ///
-  /// 저장소 정리(재설치 확인)가 끝나기 전에 토큰을 읽으면 이전 설치의 토큰으로
-  /// 로그인될 수 있으므로, 정리 → 세션 복원 순서를 지킵니다.
+  /// 재설치 정리가 끝나기 전에 토큰을 읽으면 이전 설치의 토큰으로 로그인될 수 있으므로
+  /// 정리 → 세션 복원 순서를 지킵니다.
   Future<void> initialize() async {
-    if (_storageCleanupInProgress || _disposed) return;
+    if (_installCleanupInProgress || _disposed) return;
 
-    if (!_storageCleaned) {
-      _storageCleanupInProgress = true;
+    if (!_installCleaned) {
+      _installCleanupInProgress = true;
       status = AuthStatus.initializing;
       message = null;
       _notify();
       try {
-        await _storageCleanup();
-        _storageCleaned = true;
+        await _installCleanup();
+        _installCleaned = true;
       } catch (_) {
         status = AuthStatus.retryRequired;
         message = '인증 저장소를 읽지 못했어요. 다시 시도해 주세요.';
       } finally {
-        _storageCleanupInProgress = false;
+        _installCleanupInProgress = false;
       }
-      if (!_storageCleaned) {
+      if (!_installCleaned) {
         _notify();
         return;
       }
@@ -100,7 +120,9 @@ class AuthViewModel extends ChangeNotifier {
 
   /// 저장된 토큰을 읽고 `/members/me`로 서버 검증해 로그인 상태를 다시 확정합니다.
   Future<void> restoreSession() async {
-    if (_storageCleanupInProgress || _disposed) return;
+    if (storageCleanupInProgress || _installCleanupInProgress || _disposed) {
+      return;
+    }
     final version = ++_sessionVersion;
     status = AuthStatus.initializing;
     message = null;
@@ -137,53 +159,163 @@ class AuthViewModel extends ChangeNotifier {
       if (!_isCurrent(version)) return;
       final code = apiErrorCode(error);
       // 토큰 없음·무효·만료 — 이 토큰으로는 다시 시도해도 성공할 수 없으므로 세션을 정리합니다.
-      if (code == 'AUTH401_2' || code == 'AUTH401_3' || code == 'AUTH401_4') {
-        await _clearCurrentSession(expired: true);
+      if (_isSessionExpiredCode(code)) {
+        await _clearCurrentSession();
         return;
       }
       // 토큰은 유효하지만 회원이 없어짐 — 재시도해도 같은 결과이므로 로그인부터 다시 합니다.
       if (code == 'MEMBER404_1') {
-        await _clearCurrentSession(message: '회원 정보를 찾을 수 없어요. 다시 로그인해 주세요.');
+        await _clearCurrentSession(expired: false);
         return;
       }
       // 연결 실패·서버 오류 — 유효한 토큰일 수 있으므로 지우지 않고 재시도를 안내합니다.
-      memberStatus = MemberLoadStatus.failure;
+      memberStatus = MemberLoadStatus.error;
       status = AuthStatus.retryRequired;
       message = '로그인 상태를 확인하지 못했어요. 다시 시도해 주세요.';
     } catch (_) {
       // 응답 형식이 계약과 다름 — 로그인을 확정할 근거가 없으므로 재시도를 안내합니다.
       if (!_isCurrent(version)) return;
-      memberStatus = MemberLoadStatus.failure;
+      memberStatus = MemberLoadStatus.error;
       status = AuthStatus.retryRequired;
       message = '로그인 상태를 확인하지 못했어요. 다시 시도해 주세요.';
     }
     if (_isCurrent(version)) _notify();
   }
 
-  /// 현재 세션의 토큰과 메모리 상태를 비우고 signedOut으로 바꿉니다.
+  /// 로그인 — 성공하면 토큰을 저장하고 signedIn으로 바꿉니다. 화면 이동은 Router가 합니다.
   ///
-  /// 버전을 올려, 정리 전에 출발한 요청의 응답이 늦게 와도 상태를 되살리지 못하게 합니다.
-  Future<void> _clearCurrentSession({
-    bool expired = false,
-    String? message,
-  }) async {
-    final version = ++_sessionVersion;
-    try {
-      await _storage.deleteAccessToken();
-    } catch (_) {
-      // 삭제에 실패해도 메모리 세션은 비웁니다. 다음 실행 때 서버가 다시 401로 판단합니다.
+  /// 신규 로그인은 여기서 `/members/me`를 다시 부르지 않고, MainScreen의 [loadMember]가 불러옵니다.
+  Future<void> login(String email, String password) async {
+    if (_disposed ||
+        storageCleanupInProgress ||
+        status == AuthStatus.authenticating) {
+      return;
     }
-    if (!_isCurrent(version)) return;
+    status = AuthStatus.authenticating;
     member = null;
     memberStatus = MemberLoadStatus.idle;
-    status = AuthStatus.signedOut;
-    this.message = message ?? (expired ? '로그인이 만료되었어요. 다시 로그인해 주세요.' : null);
+    sessionExpired = false;
+    message = null;
+    loginError = null;
+    final version = ++_sessionVersion;
     _notify();
+
+    try {
+      final result = await _authApi.login(
+        LoginRequest(email: email, password: password),
+      );
+      if (!_isCurrent(version)) return;
+      final writing = _storage.saveAccessToken(result.accessToken);
+      _tokenWrite = writing;
+      try {
+        await writing;
+      } finally {
+        if (identical(_tokenWrite, writing)) _tokenWrite = null;
+      }
+      if (!_isCurrent(version)) return;
+      status = AuthStatus.signedIn;
+    } on DioException catch (error) {
+      if (!_isCurrent(version)) return;
+      status = AuthStatus.signedOut;
+      final code = apiErrorCode(error);
+      if (code == 'AUTH401_1') {
+        // 로그인 Form 오류 — 세션 만료 처리(전역 401)와 묶지 않습니다.
+        loginError = '이메일 또는 비밀번호를 확인해 주세요.';
+      } else if (code == 'COMMON400') {
+        // 입력값 검증 실패 — 서버 message를 입력칸 아래에 그대로 보여줍니다.
+        loginError = apiErrorMessage(error) ?? '입력값을 다시 확인해 주세요.';
+      } else {
+        message = '로그인 요청에 실패했어요. 잠시 후 다시 시도해 주세요.';
+      }
+    } catch (_) {
+      if (!_isCurrent(version)) return;
+      status = AuthStatus.signedOut;
+      message = '로그인 정보를 안전하게 저장하지 못했어요.';
+    }
+    _notify();
+  }
+
+  /// 입력값이 바뀌면 이전 로그인 실패 문구는 더 이상 그 값에 대한 것이 아니므로 지웁니다.
+  void clearLoginError() {
+    if (loginError == null) return;
+    loginError = null;
+    _notify();
+  }
+
+  /// 내 정보를 불러와 [member]에 보관합니다. MainScreen이 처음 열릴 때 한 번 호출합니다.
+  ///
+  /// 앱 재시작은 [restoreSession]이 이미 채웠으므로 [force] 없이는 다시 부르지 않습니다.
+  Future<void> loadMember({bool force = false}) async {
+    if (_disposed || status != AuthStatus.signedIn) return;
+    if (memberStatus == MemberLoadStatus.loading) return;
+    if (member != null && !force) return;
+
+    final version = _sessionVersion;
+    memberStatus = MemberLoadStatus.loading;
+    _notify();
+
+    try {
+      final me = await _memberApi.fetchMe();
+      if (!_isCurrent(version)) return; // 로그아웃·계정 전환 뒤 늦게 온 응답 무시
+      member = me;
+      memberStatus = MemberLoadStatus.success;
+    } on DioException catch (error) {
+      if (!_isCurrent(version)) return;
+      if (_isSessionExpiredCode(apiErrorCode(error))) {
+        // 세션 만료: signedOut이 되어 Router가 /login으로 보냅니다.
+        await _clearCurrentSession();
+        return;
+      }
+      // 네트워크 실패: 로그아웃하지 않고 재시도할 수 있게 남깁니다.
+      memberStatus = MemberLoadStatus.error;
+      message = '내 정보를 불러오지 못했어요.';
+    } catch (_) {
+      if (!_isCurrent(version)) return;
+      memberStatus = MemberLoadStatus.error;
+      message = '내 정보를 불러오지 못했어요.';
+    }
+    _notify();
+  }
+
+  static bool _isSessionExpiredCode(String? code) =>
+      code == 'AUTH401_2' || code == 'AUTH401_3' || code == 'AUTH401_4';
+
+  /// 토큰 만료·무효로 현재 세션을 더 이상 쓸 수 없을 때 호출합니다.
+  ///
+  /// 세션 버전 증가 → signedOut → 저장된 토큰 삭제. 화면 이동은 Router가 /login으로 합니다.
+  Future<void> _clearCurrentSession({bool expired = true}) async {
+    if (_disposed || storageCleanupInProgress) return;
+    final version = ++_sessionVersion;
+    storageCleanupInProgress = true;
+    member = null;
+    memberStatus = MemberLoadStatus.idle;
+    sessionExpired = expired;
+    status = AuthStatus.signedOut;
+    message = null;
+    loginError = null;
+    _notify();
+    try {
+      // 진행 중이던 토큰 저장을 기다린 뒤 삭제합니다. 정리 중 새 로그인은 막습니다.
+      try {
+        await _tokenWrite;
+      } catch (_) {
+        // 저장 실패여도 삭제는 시도합니다.
+      }
+      await _storage.deleteAccessToken();
+    } catch (_) {
+      if (_isCurrent(version)) {
+        message = '저장된 인증 정보를 지우지 못했어요. 앱 재실행 전에 저장소 상태를 확인해 주세요.';
+      }
+    } finally {
+      storageCleanupInProgress = false;
+      if (_isCurrent(version)) _notify();
+    }
   }
 
   @override
   void dispose() {
     _disposed = true;
+    _sessionVersion++;
     super.dispose();
   }
 }

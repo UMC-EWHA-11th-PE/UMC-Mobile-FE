@@ -3,19 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:movielog/data/local/auth_token_storage.dart';
+import 'package:movielog/data/local/token_storage.dart';
+import 'package:movielog/data/models/login_models.dart';
 import 'package:movielog/data/models/member_info.dart';
+import 'package:movielog/data/services/auth_api_service.dart';
 import 'package:movielog/data/services/member_api_service.dart';
 import 'package:movielog/view_models/auth_view_model.dart';
 
 /// 보안 저장소 대신 메모리에 토큰을 두는 저장소 — 플랫폼 채널 없이 테스트합니다.
-class InMemoryTokenStorage extends AuthTokenStorage {
+class InMemoryTokenStorage implements TokenStorage {
   InMemoryTokenStorage([this.token]);
 
   String? token;
 
   /// true면 읽기에서 예외 — 저장소 오류 확인용
   bool failRead = false;
+
+  /// true면 저장에서 예외 — 로그인 후 토큰 저장 실패 확인용
+  bool failSave = false;
   int deleteCount = 0;
 
   @override
@@ -25,7 +30,10 @@ class InMemoryTokenStorage extends AuthTokenStorage {
   }
 
   @override
-  Future<void> writeAccessToken(String token) async => this.token = token;
+  Future<void> saveAccessToken(String token) async {
+    if (failSave) throw Exception('keychain unavailable');
+    this.token = token;
+  }
 
   @override
   Future<void> deleteAccessToken() async {
@@ -38,6 +46,30 @@ final fakeMember = MemberInfo(
   email: 'mingo@example.com',
   nickname: '밍고',
   createdAt: DateTime.utc(2026, 9, 6),
+);
+
+/// 공통 오류 body를 담은 DioException
+DioException fakeApiError(String path, String code, int status) {
+  final options = RequestOptions(path: path);
+  return DioException.badResponse(
+    statusCode: status,
+    requestOptions: options,
+    response: Response(
+      requestOptions: options,
+      statusCode: status,
+      data: {
+        'isSuccess': false,
+        'code': code,
+        'message': 'server message for $code',
+        'result': null,
+      },
+    ),
+  );
+}
+
+DioException _connectionError(String path) => DioException(
+  requestOptions: RequestOptions(path: path),
+  type: DioExceptionType.connectionError,
 );
 
 /// `/v7/members/me`를 흉내 냅니다.
@@ -65,44 +97,58 @@ class FakeMemberApiService extends MemberApiService {
   @override
   Future<MemberInfo> fetchMe() async {
     calls++;
-    final options = RequestOptions(path: '/v7/members/me');
     if (gate != null) await gate;
-    if (connectionError) {
-      throw DioException(
-        requestOptions: options,
-        type: DioExceptionType.connectionError,
-      );
-    }
+    if (connectionError) throw _connectionError('/v7/members/me');
     final code = errorCode;
-    if (code != null) {
-      throw DioException.badResponse(
-        statusCode: errorStatus,
-        requestOptions: options,
-        response: Response(
-          requestOptions: options,
-          statusCode: errorStatus,
-          data: {
-            'isSuccess': false,
-            'code': code,
-            'message': 'error',
-            'result': null,
-          },
-        ),
-      );
-    }
+    if (code != null) throw fakeApiError('/v7/members/me', code, errorStatus);
     return member;
+  }
+}
+
+/// `POST /v7/auth/login`을 흉내 냅니다.
+/// - 기본은 nickname 밍고 + [accessToken] 응답
+/// - [errorCode]가 있으면 [errorStatus]와 공통 오류 body로 실패
+/// - [connectionError]가 true면 응답 없는 연결 실패
+/// - [gate]가 있으면 그 Future가 끝날 때까지 응답을 미룸 — 요청 중 상태 확인용
+/// - [requests]에 보낸 요청을 기록
+class FakeAuthApiService extends AuthApiService {
+  FakeAuthApiService({
+    this.accessToken = 'new-token',
+    this.errorCode,
+    this.errorStatus = 401,
+    this.connectionError = false,
+    this.gate,
+  }) : super(Dio());
+
+  String accessToken;
+  String? errorCode;
+  int errorStatus;
+  bool connectionError;
+  Future<void>? gate;
+  final requests = <LoginRequest>[];
+
+  @override
+  Future<LoginResult> login(LoginRequest request) async {
+    requests.add(request);
+    if (gate != null) await gate;
+    if (connectionError) throw _connectionError('/v7/auth/login');
+    final code = errorCode;
+    if (code != null) throw fakeApiError('/v7/auth/login', code, errorStatus);
+    return LoginResult(nickname: '밍고', accessToken: accessToken);
   }
 }
 
 /// 저장소 정리를 건너뛰는 AuthViewModel — 플랫폼 채널 없이 테스트합니다.
 AuthViewModel fakeAuth({
   String? token = 'test-token',
+  FakeAuthApiService? authApi,
   FakeMemberApiService? memberApi,
   InMemoryTokenStorage? storage,
 }) {
   return AuthViewModel(
-    storage ?? InMemoryTokenStorage(token),
+    authApi ?? FakeAuthApiService(),
     memberApi ?? FakeMemberApiService(),
+    storage ?? InMemoryTokenStorage(token),
     storageCleanup: () async {},
   );
 }
@@ -115,8 +161,8 @@ Future<AuthViewModel> signedInAuth() async {
 }
 
 /// 토큰이 없는 로그아웃 세션
-Future<AuthViewModel> signedOutAuth() async {
-  final auth = fakeAuth(token: null);
+Future<AuthViewModel> signedOutAuth({FakeAuthApiService? authApi}) async {
+  final auth = fakeAuth(token: null, authApi: authApi);
   await auth.initialize();
   return auth;
 }

@@ -51,7 +51,7 @@ class AppRouter {
   /// [auth]의 상태가 바뀔 때마다(refreshListenable) redirect를 다시 계산합니다.
   ///
   /// 앱(MovieLogApp)마다 한 번 만들어, 테스트끼리 이동 기록·Navigator key를 공유하지 않습니다.
-  static GoRouter create(AuthViewModel auth) {
+  static GoRouter createRouter(AuthViewModel auth) {
     // root Navigator — 하단 탭(ShellRoute) 바깥에 전체 화면으로 띄울 Route가 사용합니다.
     final rootNavigatorKey = GlobalKey<NavigatorState>();
 

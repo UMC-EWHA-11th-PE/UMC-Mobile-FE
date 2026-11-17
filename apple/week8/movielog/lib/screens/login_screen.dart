@@ -1,48 +1,252 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 import '../view_models/auth_view_model.dart';
+import '../widgets/common_app_bar.dart';
 import '../widgets/movielog_button.dart';
 
-/// 로그인 화면 — 지금은 라우터 연결 확인용 임시 화면입니다.
+/// 로그인 화면 (W8-03 기본 · W8-04 요청 중 · W8-05 실패)
 ///
-/// TODO(W8): Figma 로그인 디자인을 받으면 이메일·비밀번호 Form과 POST /v7/auth/login을 연결합니다.
-/// 세션 만료 등 [AuthViewModel.message]가 있으면 안내 문구로 보여줍니다.
-class LoginScreen extends StatelessWidget {
+/// 버튼은 [AuthViewModel.login]만 호출하고 직접 `/home`으로 이동하지 않습니다.
+/// 성공하면 status가 signedIn이 되고 Router(redirect)가 홈으로 보냅니다.
+/// - 요청 중(authenticating): 버튼 로딩, 입력·회원가입 이동 막기
+/// - AUTH401_1·COMMON400: 비밀번호 입력칸 빨간 테두리 + 아래 문구 ([AuthViewModel.loginError])
+/// - 연결 실패·토큰 저장 실패: Snackbar ([AuthViewModel.message])
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _passwordFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _passwordFocusNode.dispose();
+    super.dispose();
+  }
+
+  /// 이메일·비밀번호가 모두 입력돼 있고 요청 중이 아니어야 로그인할 수 있습니다.
+  bool _canSubmit(AuthViewModel auth) =>
+      auth.status != AuthStatus.authenticating &&
+      _emailController.text.trim().isNotEmpty &&
+      _passwordController.text.isNotEmpty;
+
+  /// 입력이 바뀌면 버튼 활성화를 다시 계산하고, 이전 로그인 실패 문구를 지웁니다.
+  void _onChanged() {
+    context.read<AuthViewModel>().clearLoginError();
+    setState(() {});
+  }
+
+  Future<void> _submit() async {
+    final auth = context.read<AuthViewModel>();
+    if (!_canSubmit(auth)) return;
+    FocusScope.of(context).unfocus();
+
+    await auth.login(_emailController.text, _passwordController.text);
+    // 성공하면 Router가 이 화면을 홈으로 바꾸므로 mounted가 false가 됩니다.
+    if (!mounted) return;
+
+    final message = auth.message;
+    if (auth.status == AuthStatus.signedOut && message != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+        );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthViewModel>();
+    final isSubmitting = auth.status == AuthStatus.authenticating;
     final textTheme = Theme.of(context).textTheme;
-    final message = context.select<AuthViewModel, String?>((vm) => vm.message);
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
+      appBar: const CommonAppBar(
+        title: '로그인',
+        titleStyle: AppTheme.appBarTitleBold,
+        showBack: false,
+      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
+        // 키보드가 올라와도 입력창이 가려지지 않도록 스크롤 가능하게 만듭니다.
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('로그인', style: textTheme.titleLarge),
-              if (message != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: textTheme.bodyMedium,
+              SvgPicture.asset(
+                'assets/logos/movielog_logo.svg',
+                width: 84,
+                height: 84,
+                semanticsLabel: 'MovieLog 로고',
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'MovieLog에 로그인',
+                textAlign: TextAlign.center,
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.detailText,
                 ),
-              ],
+              ),
               const SizedBox(height: 32),
+              _LoginField(
+                label: '이메일',
+                child: TextField(
+                  controller: _emailController,
+                  readOnly: isSubmitting,
+                  onChanged: (_) => _onChanged(),
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  autocorrect: false,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _passwordFocusNode.requestFocus(),
+                  style: _fieldTextStyle(textTheme),
+                  decoration: _decoration(textTheme, hint: '이메일을 입력해 주세요'),
+                ),
+              ),
+              const SizedBox(height: 24),
+              _LoginField(
+                label: '비밀번호',
+                child: TextField(
+                  controller: _passwordController,
+                  focusNode: _passwordFocusNode,
+                  readOnly: isSubmitting,
+                  onChanged: (_) => _onChanged(),
+                  obscureText: true,
+                  autofillHints: const [AutofillHints.password],
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _submit(),
+                  style: _fieldTextStyle(textTheme),
+                  decoration: _decoration(
+                    textTheme,
+                    hint: '비밀번호를 입력해 주세요',
+                    hasError: auth.loginError != null,
+                  ),
+                ),
+              ),
+              // 로그인 실패 문구 (W8-05) — 입력창 왼쪽 끝에 맞추고, 문구가 없어도 같은
+              // 높이를 비워 둬서 문구가 나타나도 아래 버튼이 움직이지 않습니다.
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 16,
+                child: auth.loginError == null
+                    ? null
+                    : Text(
+                        auth.loginError!,
+                        style: textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w400,
+                          color: colors.error,
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 88),
+              // 요청 중: 회색 배경 + 로딩 표시 (W8-04)
               MovieLogButton(
-                label: '회원가입',
-                onPressed: () => context.go('/register'),
+                label: '로그인',
                 width: double.infinity,
+                isLoading: isSubmitting,
+                onPressed: _canSubmit(auth) ? _submit : null,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '계정이 없나요?',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: isSubmitting ? null : () => context.go('/register'),
+                    child: Text(
+                      '회원가입',
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: colors.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  TextStyle? _fieldTextStyle(TextTheme textTheme) =>
+      textTheme.bodyMedium?.copyWith(color: AppColors.inputText);
+
+  /// 실패해도 배경은 그대로 두고 테두리만 빨갛게 바꿉니다. (W8-05)
+  ///
+  /// 문구는 InputDecoration의 errorText 대신 입력창 아래에 따로 그립니다.
+  /// errorText는 입력창 안쪽 여백만큼 들여 써져 Figma(입력창 왼쪽 끝 정렬)와 달라집니다.
+  InputDecoration _decoration(
+    TextTheme textTheme, {
+    required String hint,
+    bool hasError = false,
+  }) {
+    final errorBorder = hasError
+        ? OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radius),
+            borderSide: BorderSide(color: Theme.of(context).colorScheme.error),
+          )
+        : null;
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: textTheme.bodyMedium?.copyWith(color: AppColors.placeholder),
+      fillColor: AppColors.inputBackground,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      enabledBorder: errorBorder,
+      focusedBorder: errorBorder,
+    );
+  }
+}
+
+/// 라벨 + 입력창 묶음 — 라벨 Manrope 600 / 13, 입력창과 gap 6
+class _LoginField extends StatelessWidget {
+  const _LoginField({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            height: 20 / 13,
+            fontWeight: FontWeight.w600,
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 6),
+        child,
+      ],
     );
   }
 }

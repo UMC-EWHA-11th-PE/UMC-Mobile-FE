@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../theme/app_shadows.dart';
 import '../theme/app_theme.dart';
+import '../view_models/auth_view_model.dart';
 
-class MainScreen extends StatelessWidget {
+/// 홈·영화·마이 탭을 감싸는 화면 (ShellRoute builder)
+///
+/// 탭을 바꿔도 이 State는 유지되고 child만 바뀌므로 initState는 한 번만 실행됩니다.
+/// 그래서 어느 탭으로 진입하든 내 정보(`/members/me`)를 여기서 한 번 불러와
+/// [AuthViewModel.member]에 보관하고, 마이페이지 등 다른 화면이 같은 값을 씁니다.
+/// 로그아웃 후 다시 로그인하면 새로 만들어져 다시 불러옵니다.
+class MainScreen extends StatefulWidget {
   const MainScreen({
     super.key,
     required this.currentIndex,
@@ -16,11 +24,26 @@ class MainScreen extends StatelessWidget {
   final Widget child;
 
   @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 첫 build 도중 notifyListeners()가 실행되지 않도록 프레임이 끝난 뒤 호출합니다.
+    // 앱 재시작으로 이미 member가 있으면 loadMember가 다시 요청하지 않습니다.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AuthViewModel>().loadMember();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: child,
+      body: widget.child,
       bottomNavigationBar: _BottomNavBar(
-        currentIndex: currentIndex,
+        currentIndex: widget.currentIndex,
         onSelected: (index) {
           switch (index) {
             case 0:
