@@ -328,4 +328,91 @@ void main() {
       expect(location(tester), '/register');
     });
   });
+
+  group('세션 만료 안내', () {
+    const expiredText = '로그인이 만료됐어요. 다시 로그인해 주세요.';
+
+    setUp(() {
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+    });
+
+    Future<void> pumpApp(WidgetTester tester, AuthViewModel auth) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MovieLogApp(authViewModel: auth, tmdbMovieService: fakeTmdbService()),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    String location(WidgetTester tester) =>
+        appRouter(tester).routerDelegate.currentConfiguration.uri.path;
+
+    testWidgets('보호 화면에서 만료되면 로그인 화면에서 한 번만 안내한다', (tester) async {
+      final auth = await signedInAuth();
+      await pumpApp(tester, auth);
+      appRouter(tester).go('/my');
+      await tester.pumpAndSettle();
+
+      await auth.expireSession();
+      await tester.pumpAndSettle();
+
+      expect(location(tester), '/login');
+      expect(find.text(expiredText), findsOneWidget);
+      expect(auth.sessionExpired, isFalse); // 보여준 뒤 꺼짐
+
+      // 다른 상태 변화(입력 오류 지우기 등)로 다시 알려도 반복되지 않습니다.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(find.text(expiredText), findsNothing);
+      await tester.enterText(find.byType(TextField).at(0), 'a@b.com');
+      await tester.pumpAndSettle();
+      expect(find.text(expiredText), findsNothing);
+    });
+
+    testWidgets('앱 시작 시 저장 토큰이 만료(AUTH401_4)였으면 로그인 화면이 열리며 안내한다', (
+      tester,
+    ) async {
+      final auth = fakeAuth(
+        memberApi: FakeMemberApiService(errorCode: 'AUTH401_4'),
+      );
+      await auth.initialize(); // 첫 화면이 그려지기 전에 이미 만료 상태
+      await pumpApp(tester, auth);
+
+      expect(location(tester), '/login');
+      expect(find.text(expiredText), findsOneWidget);
+    });
+
+    testWidgets('직접 로그아웃하면 만료 안내를 띄우지 않는다', (tester) async {
+      final auth = await signedInAuth();
+      await pumpApp(tester, auth);
+      appRouter(tester).go('/my');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('로그아웃'));
+      await tester.pumpAndSettle();
+
+      expect(location(tester), '/login');
+      expect(find.text(expiredText), findsNothing);
+    });
+
+    testWidgets('AUTH401_1 로그인 실패는 만료 안내가 아니라 입력칸 문구만 보여준다', (tester) async {
+      final auth = await signedOutAuth(
+        authApi: FakeAuthApiService(errorCode: 'AUTH401_1'),
+      );
+      await pumpApp(tester, auth);
+
+      await tester.enterText(find.byType(TextField).at(0), 'movie@example.com');
+      await tester.enterText(find.byType(TextField).at(1), 'wrong');
+      await tester.pump();
+      await tester.tap(find.byType(MovieLogButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('이메일 또는 비밀번호를 확인해 주세요.'), findsOneWidget);
+      expect(find.text(expiredText), findsNothing);
+      expect(auth.sessionExpired, isFalse);
+    });
+  });
 }

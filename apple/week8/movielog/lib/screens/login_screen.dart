@@ -28,18 +28,45 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _passwordFocusNode = FocusNode();
+  late final AuthViewModel _auth;
+
+  @override
+  void initState() {
+    super.initState();
+    // 화면이 열려 있는 중 만료되는 경우는 리스너로, 이미 만료된 상태로 처음 열리는
+    // 경우(보호 화면에서 401 → redirect)는 첫 프레임 뒤 확인으로 처리합니다.
+    _auth = context.read<AuthViewModel>();
+    _auth.addListener(_showSessionExpired);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showSessionExpired());
+  }
+
+  /// 만료로 쫓겨난 경우에만 한 번 안내합니다. 직접 로그아웃·AUTH401_1은 sessionExpired가 꺼져 있습니다.
+  void _showSessionExpired() {
+    if (!mounted || !_auth.sessionExpired) return;
+    _auth.consumeSessionExpired(); // 같은 Snackbar가 반복되지 않게 바로 끕니다.
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('로그인이 만료됐어요. 다시 로그인해 주세요.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
 
   @override
   void dispose() {
+    _auth.removeListener(_showSessionExpired);
     _emailController.dispose();
     _passwordController.dispose();
     _passwordFocusNode.dispose();
     super.dispose();
   }
 
-  /// 이메일·비밀번호가 모두 입력돼 있고 요청 중이 아니어야 로그인할 수 있습니다.
+  /// 이메일·비밀번호가 모두 입력돼 있고, 요청 중·토큰 정리 중이 아니어야 로그인할 수 있습니다.
   bool _canSubmit(AuthViewModel auth) =>
       auth.status != AuthStatus.authenticating &&
+      !auth.storageCleanupInProgress &&
       _emailController.text.trim().isNotEmpty &&
       _passwordController.text.isNotEmpty;
 

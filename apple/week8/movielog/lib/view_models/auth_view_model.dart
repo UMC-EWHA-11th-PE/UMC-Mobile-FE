@@ -285,6 +285,11 @@ class AuthViewModel extends ChangeNotifier {
     _notify();
   }
 
+  /// 로그인 화면이 만료 안내를 한 번 보여준 뒤 호출합니다. 화면을 다시 그릴 필요가 없어 알리지 않습니다.
+  void consumeSessionExpired() {
+    sessionExpired = false;
+  }
+
   /// 다른 ViewModel이 보호 요청에서 401(AUTH401_2/3/4)을 받았을 때 세션 정리를 요청하는 공개 진입점입니다.
   Future<void> expireSession() => _clearCurrentSession(expired: true);
 
