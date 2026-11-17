@@ -88,8 +88,16 @@ class AuthViewModel extends ChangeNotifier {
 
   bool _isCurrent(int version) => !_disposed && version == _sessionVersion;
 
+  AuthStatus? _loggedStatus;
+
   void _notify() {
-    if (!_disposed) notifyListeners();
+    if (_disposed) return;
+    // 개발 중 상태 흐름 확인용 — 토큰·이메일 같은 값은 남기지 않고 상태 이름만 씁니다.
+    if (kDebugMode && _loggedStatus != status) {
+      debugPrint('[Auth] ${_loggedStatus?.name ?? 'start'} → ${status.name}');
+      _loggedStatus = status;
+    }
+    notifyListeners();
   }
 
   /// 앱 시작 시 한 번 호출합니다. 스플래시의 '다시 시도'도 이 함수를 다시 부릅니다.
