@@ -18,7 +18,7 @@ class TmdbMovieCard extends StatelessWidget {
 
     return InkWell(
       // TMDB id를 그대로 전달 (배열 index 사용 X)
-      onTap: () => context.push('/movies/${movie.id}'),
+      onTap: () => context.push('/movies/${movie.id}', extra: movie),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

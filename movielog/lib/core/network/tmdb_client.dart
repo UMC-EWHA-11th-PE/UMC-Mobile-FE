@@ -5,9 +5,6 @@ import '../config/tmdb_config.dart';
 import 'tmdb_logging_interceptor.dart';
 
 Dio createTmdbClient() {
-  debugPrint(
-    '[토큰 확인] 길이: ${TmdbConfig.accessToken.length}, eyJ로 시작: ${TmdbConfig.accessToken.startsWith('eyJ')}',
-  );
   final dio = Dio(
     BaseOptions(
       baseUrl: 'https://api.themoviedb.org/3',
