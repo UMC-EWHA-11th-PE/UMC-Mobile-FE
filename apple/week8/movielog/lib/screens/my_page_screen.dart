@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../models/profile_stat.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
+import '../view_models/auth_view_model.dart';
+import '../view_models/learning_member_session.dart';
 import '../widgets/app_header.dart';
-import '../widgets/svg_icon_button.dart';
 import '../widgets/tag_chip.dart';
 
 /// 마이 탭 — 1주차 W1-01 내 프로필 화면을 가져왔습니다.
 ///
+/// 8주차(W8-06) — 닉네임·이메일은 `/members/me`로 받은 [AuthViewModel.member]를 보여주고,
+/// 헤더 오른쪽에 로그아웃 버튼을 둡니다. 통계·선호 장르는 아직 학습용 고정 값입니다.
+///
 /// 화면은 의미 단위로 나뉩니다.
-/// - [AppHeader] 내 프로필, 내 정보 버튼
-/// - [_ProfileHeader] 프로필 사진, 닉네임, 소개, 프로필 수정 버튼
+/// - [AppHeader] 내 프로필, 로그아웃 버튼
+/// - [_ProfileHeader] 프로필 사진, 닉네임, 이메일, 프로필 수정 버튼
 /// - [_ProfileStats] 본 영화·평점·즐겨찾기 통계
 /// - [_FavoriteGenres] 선호하는 장르
 /// - [_MyRatingsEntry] 내가 등록한 평점 화면으로 이동 (6주차)
@@ -25,17 +30,14 @@ class MyPageScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      // 헤더 — 390 x 64, 제목 Manrope 500 / 22 / 28 #6750A4
+      // 헤더 — 390 x 64, 제목 Manrope 700 / 22 / 28 #6750A4 (W8-06)
       appBar: AppHeader(
         title: '내 프로필',
-        titleStyle: textTheme.titleLarge?.copyWith(color: colors.primary),
-        trailing: SvgIconButton(
-          asset: 'assets/icons/person.svg',
-          iconSize: const Size(24, 24),
+        titleStyle: textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w700,
           color: colors.primary,
-          tooltip: '내 정보',
-          onPressed: () {}, // 아직 동작을 연결하지 않습니다.
         ),
+        trailing: const _LogoutButton(),
       ),
       // 메인 컨텐츠 — padding 24 / 16, 섹션 사이 gap 32
       body: const SingleChildScrollView(
@@ -58,14 +60,13 @@ class MyPageScreen extends StatelessWidget {
   }
 }
 
-/// Section - Profile Header Area — 358 x 294, gap 16
+/// Section - Profile Header Area — 프로필 사진, 닉네임·이메일, 프로필 수정 버튼
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader();
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
 
     return Column(
       children: [
@@ -76,7 +77,7 @@ class _ProfileHeader extends StatelessWidget {
           decoration: const BoxDecoration(
             shape: BoxShape.circle,
             border: Border.fromBorderSide(
-              BorderSide(color: AppColors.avatarBorder, width: 2),
+              BorderSide(color: AppColors.primary, width: 2),
             ),
           ),
           child: ClipOval(
@@ -97,52 +98,130 @@ class _ProfileHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        // 무비러버 + 설명 컨테이너 — 318 너비, gap 8
-        SizedBox(
-          width: 318,
-          child: Column(
-            children: [
-              Text(
-                '무비러버',
-                textAlign: TextAlign.center,
-                style: textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '매주 주말엔 영화관으로 출근하는 프로 관람객. 좋은 영화를 보고 기록하는 것을 좋아합니다.',
-                textAlign: TextAlign.center,
-                style: textTheme.titleMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
+        const _MemberSummary(),
+        // 이메일 아래 ~ 프로필 수정 버튼 (W8-06)
+        const SizedBox(height: 52),
+        const _EditProfileButton(),
+      ],
+    );
+  }
+}
+
+/// 닉네임 + 이메일 — `/members/me` 결과([AuthViewModel.member])를 그대로 보여줍니다.
+///
+/// 신규 로그인 직후에는 MainScreen의 loadMember가 끝날 때까지 로딩을,
+/// 실패하면 로그아웃하지 않고 다시 시도 버튼을 보여줍니다.
+class _MemberSummary extends StatelessWidget {
+  const _MemberSummary();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthViewModel>();
+    final member = auth.member;
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    if (member == null) {
+      // 닉네임·이메일 두 줄과 같은 높이를 유지해 아래 버튼이 움직이지 않게 합니다.
+      return SizedBox(
+        height: 56,
+        child: Center(
+          child: auth.memberStatus == MemberLoadStatus.error
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '내 정보를 불러오지 못했어요.',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => auth.loadMember(force: true),
+                      child: const Text('다시 시도'),
+                    ),
+                  ],
+                )
+              : const SizedBox.square(
+                  dimension: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              ),
-            ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // 닉네임 — Manrope 700 / 22 / 28
+        Text(
+          member.nickname,
+          textAlign: TextAlign.center,
+          style: textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.detailText,
           ),
         ),
-        const SizedBox(height: 16),
-        // 버튼 마진 — padding-top 8
-        const Padding(
-          padding: EdgeInsets.only(top: 8),
-          child: _EditProfileButton(),
+        const SizedBox(height: 8),
+        // 이메일 — Manrope 400 / 14 / 20
+        Text(
+          member.email,
+          textAlign: TextAlign.center,
+          style: textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
         ),
       ],
     );
   }
 }
 
-/// 프로필 수정 버튼 — 127 x 42, radius 8, 테두리 1px #6750A4
-/// 1주차 테마의 TextButton 스타일을 이 버튼에만 적용합니다.
-class _EditProfileButton extends StatelessWidget {
-  const _EditProfileButton();
+/// 헤더 오른쪽 로그아웃 — Manrope 700 / 14, #6750A4 (W8-06)
+///
+/// 화면 이동은 하지 않습니다. 세션이 signedOut이 되면 Router가 /login으로 보냅니다.
+class _LogoutButton extends StatelessWidget {
+  const _LogoutButton();
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
     return TextButton(
-      onPressed: () {}, // 프로필 수정 화면은 아직 연결하지 않습니다.
+      onPressed: () {
+        // 7주차 학습용 memberId도 이전 계정의 값이 남지 않도록 함께 비웁니다.
+        context.read<LearningMemberSession>().clear();
+        context.read<AuthViewModel>().logout();
+      },
       style: TextButton.styleFrom(
         foregroundColor: colors.primary,
-        side: BorderSide(color: colors.primary),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        minimumSize: const Size(0, 40),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(fontWeight: FontWeight.w700),
+      ),
+      child: const Text('로그아웃'),
+    );
+  }
+}
+
+/// 프로필 수정 버튼 — 127 x 42, radius 8, 테두리 1px #6750A4
+/// 1주차 테마의 TextButton 스타일을 이 버튼에만 적용합니다.
+/// 내 정보(member)가 있어야 수정할 값이 있으므로 그때만 켭니다.
+class _EditProfileButton extends StatelessWidget {
+  const _EditProfileButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final hasMember = context.select<AuthViewModel, bool>(
+      (auth) => auth.member != null,
+    );
+
+    return TextButton(
+      onPressed: hasMember ? () => context.push('/my/profile/edit') : null,
+      style: TextButton.styleFrom(
+        foregroundColor: colors.primary,
+        side: BorderSide(
+          color: hasMember ? colors.primary : AppColors.primaryDisabled,
+        ),
         minimumSize: const Size(0, 42),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         textStyle: Theme.of(context).textTheme.titleMedium,
@@ -197,11 +276,12 @@ class _StatItem extends StatelessWidget {
         border: Border.all(color: colors.primaryContainer),
         borderRadius: BorderRadius.circular(AppTheme.statRadius),
       ),
+      // W8-06 — 라벨이 위, 숫자가 아래
       child: Column(
         children: [
-          Text(value, textAlign: TextAlign.center, style: AppTheme.statValue),
-          const SizedBox(height: 8),
           Text(label, textAlign: TextAlign.center, style: textTheme.bodySmall),
+          const SizedBox(height: 8),
+          Text(value, textAlign: TextAlign.center, style: AppTheme.statValue),
         ],
       ),
     );

@@ -208,7 +208,7 @@ void main() {
 
     await tester.tap(find.text('마이'));
     await tester.pumpAndSettle();
-    expect(find.text('무비러버'), findsOneWidget);
+    expect(find.text('밍고'), findsOneWidget); // /members/me 닉네임
   });
 
   testWidgets('하단 네비게이션이 Figma 크기를 따른다', (WidgetTester tester) async {
@@ -800,7 +800,9 @@ void main() {
     expect(find.text('내 프로필'), findsOneWidget);
   });
 
-  testWidgets('마이 탭에 1주차 프로필 화면이 나온다', (WidgetTester tester) async {
+  testWidgets('마이 탭에 내 정보(닉네임·이메일)와 로그아웃 버튼이 나온다 (W8-06)', (
+    WidgetTester tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -819,8 +821,9 @@ void main() {
 
     // 헤더와 내용
     expect(find.text('내 프로필'), findsOneWidget);
-    expect(find.byTooltip('내 정보'), findsOneWidget);
-    expect(find.text('무비러버'), findsOneWidget);
+    expect(find.text('로그아웃'), findsOneWidget);
+    expect(find.text('밍고'), findsOneWidget); // /members/me 닉네임
+    expect(find.text('mingo@example.com'), findsOneWidget);
     expect(find.text('프로필 수정'), findsOneWidget);
     for (final text in ['342', '4.2', '58', '본 영화', '평점', '즐겨찾기']) {
       expect(find.text(text), findsOneWidget);

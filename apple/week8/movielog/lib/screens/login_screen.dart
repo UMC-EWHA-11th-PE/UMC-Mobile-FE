@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../view_models/auth_view_model.dart';
 import '../widgets/common_app_bar.dart';
+import '../widgets/labeled_input.dart';
 import '../widgets/movielog_button.dart';
 
 /// 로그인 화면 (W8-03 기본 · W8-04 요청 중 · W8-05 실패)
@@ -104,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              _LoginField(
+              LabeledInput(
                 label: '이메일',
                 child: TextField(
                   controller: _emailController,
@@ -115,12 +116,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   autocorrect: false,
                   textInputAction: TextInputAction.next,
                   onSubmitted: (_) => _passwordFocusNode.requestFocus(),
-                  style: _fieldTextStyle(textTheme),
-                  decoration: _decoration(textTheme, hint: '이메일을 입력해 주세요'),
+                  style: movieLogInputTextStyle(context),
+                  decoration: movieLogInputDecoration(
+                    context,
+                    hint: '이메일을 입력해 주세요',
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
-              _LoginField(
+              LabeledInput(
                 label: '비밀번호',
                 child: TextField(
                   controller: _passwordController,
@@ -131,9 +135,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   autofillHints: const [AutofillHints.password],
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _submit(),
-                  style: _fieldTextStyle(textTheme),
-                  decoration: _decoration(
-                    textTheme,
+                  style: movieLogInputTextStyle(context),
+                  decoration: movieLogInputDecoration(
+                    context,
                     hint: '비밀번호를 입력해 주세요',
                     hasError: auth.loginError != null,
                   ),
@@ -189,64 +193,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  TextStyle? _fieldTextStyle(TextTheme textTheme) =>
-      textTheme.bodyMedium?.copyWith(color: AppColors.inputText);
-
-  /// 실패해도 배경은 그대로 두고 테두리만 빨갛게 바꿉니다. (W8-05)
-  ///
-  /// 문구는 InputDecoration의 errorText 대신 입력창 아래에 따로 그립니다.
-  /// errorText는 입력창 안쪽 여백만큼 들여 써져 Figma(입력창 왼쪽 끝 정렬)와 달라집니다.
-  InputDecoration _decoration(
-    TextTheme textTheme, {
-    required String hint,
-    bool hasError = false,
-  }) {
-    final errorBorder = hasError
-        ? OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radius),
-            borderSide: BorderSide(color: Theme.of(context).colorScheme.error),
-          )
-        : null;
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: textTheme.bodyMedium?.copyWith(color: AppColors.placeholder),
-      fillColor: AppColors.inputBackground,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      enabledBorder: errorBorder,
-      focusedBorder: errorBorder,
-    );
-  }
-}
-
-/// 라벨 + 입력창 묶음 — 라벨 Manrope 600 / 13, 입력창과 gap 6
-class _LoginField extends StatelessWidget {
-  const _LoginField({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            height: 20 / 13,
-            fontWeight: FontWeight.w600,
-            color: colors.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 6),
-        child,
-      ],
     );
   }
 }

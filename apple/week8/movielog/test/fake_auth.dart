@@ -77,6 +77,10 @@ DioException _connectionError(String path) => DioException(
 /// - [errorCode]가 있으면 [errorStatus]와 공통 오류 body로 실패
 /// - [connectionError]가 true면 응답 없는 연결 실패
 /// - [gate]가 있으면 그 Future가 끝날 때까지 응답을 미룸 — 늦은 응답 확인용
+///
+/// 닉네임 수정 (PATCH /v7/members/me)
+/// - 기본은 같은 email에 바뀐 닉네임으로 응답, [nicknameRequests]에 기록
+/// - [updateErrorCode]·[updateErrorStatus]·[updateConnectionError]·[updateGate]로 실패·지연
 class FakeMemberApiService extends MemberApiService {
   FakeMemberApiService({
     MemberInfo? member,
@@ -93,6 +97,29 @@ class FakeMemberApiService extends MemberApiService {
   bool connectionError;
   Future<void>? gate;
   int calls = 0;
+
+  String? updateErrorCode;
+  int updateErrorStatus = 409;
+  bool updateConnectionError = false;
+  Future<void>? updateGate;
+  final nicknameRequests = <String>[];
+
+  @override
+  Future<MemberInfo> updateNickname(String nickname) async {
+    nicknameRequests.add(nickname);
+    if (updateGate != null) await updateGate;
+    if (updateConnectionError) throw _connectionError('/v7/members/me');
+    final code = updateErrorCode;
+    if (code != null) {
+      throw fakeApiError('/v7/members/me', code, updateErrorStatus);
+    }
+    member = MemberInfo(
+      email: member.email,
+      nickname: nickname,
+      createdAt: member.createdAt,
+    );
+    return member;
+  }
 
   @override
   Future<MemberInfo> fetchMe() async {
@@ -154,8 +181,11 @@ AuthViewModel fakeAuth({
 }
 
 /// `/members/me` 검증까지 끝난 로그인 세션 — 보호 화면 테스트의 기본값입니다.
-Future<AuthViewModel> signedInAuth() async {
-  final auth = fakeAuth();
+Future<AuthViewModel> signedInAuth({
+  FakeMemberApiService? memberApi,
+  InMemoryTokenStorage? storage,
+}) async {
+  final auth = fakeAuth(memberApi: memberApi, storage: storage);
   await auth.initialize();
   return auth;
 }

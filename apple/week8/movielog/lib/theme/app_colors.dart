@@ -139,6 +139,9 @@ class AppColors {
   /// 회원가입 입력창 배경 (W6-01)
   static const Color inputBackground = Color(0xFFFEFCF9);
 
+  /// 수정할 수 없는 입력창 배경 — 프로필 수정 이메일 (W8-07). Figma 수치가 없어 시안 색으로 추정
+  static const Color inputReadOnlyBackground = Color(0xFFEEEBF1);
+
   /// 회원가입 입력창 테두리 (W6-01)
   static const Color inputBorder = Color(0xFFD9D3E1);
 

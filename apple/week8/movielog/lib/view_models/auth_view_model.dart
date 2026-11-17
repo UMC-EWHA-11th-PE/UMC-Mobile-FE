@@ -277,10 +277,25 @@ class AuthViewModel extends ChangeNotifier {
     _notify();
   }
 
+  /// 프로필 수정 성공 응답으로 메모리의 내 정보를 교체합니다. GET me를 다시 호출하지 않습니다.
+  /// 마이페이지가 [member]를 구독하고 있어 화면 이동 없이 새 닉네임이 보입니다.
+  void updateMember(MemberInfo updated) {
+    if (_disposed || status != AuthStatus.signedIn) return;
+    member = updated;
+    _notify();
+  }
+
+  /// 다른 ViewModel이 보호 요청에서 401(AUTH401_2/3/4)을 받았을 때 세션 정리를 요청하는 공개 진입점입니다.
+  Future<void> expireSession() => _clearCurrentSession(expired: true);
+
+  /// 사용자가 직접 누르는 로그아웃 — 만료 안내 없이 세션만 비웁니다.
+  /// MovieLog 세션만 정리하고 TMDB 설정·영화 목록은 건드리지 않습니다.
+  Future<void> logout() => _clearCurrentSession(expired: false);
+
   static bool _isSessionExpiredCode(String? code) =>
       code == 'AUTH401_2' || code == 'AUTH401_3' || code == 'AUTH401_4';
 
-  /// 토큰 만료·무효로 현재 세션을 더 이상 쓸 수 없을 때 호출합니다.
+  /// 토큰 만료·무효([expired] true) 또는 로그아웃으로 현재 세션을 비웁니다.
   ///
   /// 세션 버전 증가 → signedOut → 저장된 토큰 삭제. 화면 이동은 Router가 /login으로 합니다.
   Future<void> _clearCurrentSession({bool expired = true}) async {

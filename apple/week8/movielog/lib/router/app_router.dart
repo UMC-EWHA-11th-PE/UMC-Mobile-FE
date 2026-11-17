@@ -3,10 +3,12 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../data/models/tmdb_movie_dto.dart';
+import '../data/services/member_api_service.dart';
 import '../data/services/sign_up_service.dart';
 import '../data/services/rating_api_service.dart';
 import '../data/services/tmdb_movie_service.dart';
 import '../models/movie_detail.dart';
+import '../screens/edit_profile_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/main_screen.dart';
 import '../screens/movie_detail_screen.dart';
@@ -16,13 +18,17 @@ import '../screens/my_ratings_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/splash_screen.dart';
+import '../theme/app_theme.dart';
 import '../view_models/auth_view_model.dart';
+import '../view_models/edit_profile_view_model.dart';
 import '../view_models/movie_detail_view_model.dart';
 import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
 import '../view_models/learning_member_session.dart';
 import '../view_models/my_ratings_view_model.dart';
 import '../view_models/sign_up_view_model.dart';
+import '../widgets/common_app_bar.dart';
+import '../widgets/movielog_button.dart';
 
 /// 로그인 상태와 이동하려는 경로를 보고, 다른 경로로 보내야 하면 그 경로를 돌려줍니다.
 ///
@@ -147,6 +153,39 @@ class AppRouter {
               path: '/my',
               builder: (context, state) => const MyPageScreen(),
               routes: [
+                // 프로필 수정 (최종 경로 /my/profile/edit) — 하단 탭 없이 위에 띄웁니다.
+                // 마이페이지 수정 버튼은 member가 있을 때만 켜지지만, 직접 접근에 대비해
+                // 내 정보가 아직 없으면 불러오기·다시 시도 화면을 먼저 보여줍니다.
+                GoRoute(
+                  path: 'profile/edit',
+                  parentNavigatorKey: rootNavigatorKey,
+                  builder: (context, state) {
+                    final auth = context.watch<AuthViewModel>();
+                    if (auth.member == null) {
+                      return Scaffold(
+                        appBar: const CommonAppBar(
+                          title: '프로필 수정',
+                          titleStyle: AppTheme.appBarTitleBold,
+                        ),
+                        body: Center(
+                          child: auth.memberStatus == MemberLoadStatus.error
+                              ? MovieLogButton(
+                                  label: '다시 시도',
+                                  onPressed: () => auth.loadMember(force: true),
+                                )
+                              : const CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+                    return ChangeNotifierProvider<EditProfileViewModel>(
+                      create: (context) => EditProfileViewModel(
+                        context.read<MemberApiService>(),
+                        auth,
+                      ),
+                      child: const EditProfileScreen(),
+                    );
+                  },
+                ),
                 // 내가 등록한 평점 (최종 경로 /my/ratings)
                 // root Navigator 위에 push해 하단 NavigationBar를 가립니다.
                 // 7주차 — 6주차 고정 ID 1 대신 회원가입으로 얻은 학습용 memberId를 씁니다.

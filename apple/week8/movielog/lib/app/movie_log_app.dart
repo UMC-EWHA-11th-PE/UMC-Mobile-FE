@@ -23,6 +23,7 @@ class MovieLogApp extends StatelessWidget {
     this.signUpService,
     this.ratingApiService,
     this.learningMemberSession,
+    this.memberApiService,
     this.authViewModel,
   });
 
@@ -37,6 +38,9 @@ class MovieLogApp extends StatelessWidget {
 
   /// 테스트에서 이미 가입한 학습용 회원으로 시작하기 위해 바꿔 넣을 수 있습니다.
   final LearningMemberSession? learningMemberSession;
+
+  /// 테스트에서 가짜 내 정보 조회·수정 응답을 쓰기 위해 바꿔 넣을 수 있습니다. null이면 자체 서버를 호출합니다.
+  final MemberApiService? memberApiService;
 
   /// 테스트에서 가짜 로그인·내 정보 Service를 쓰는 세션으로 바꿔 넣을 수 있습니다.
   /// 이미 확인을 마친(initializing이 아닌) 세션이면 앱이 다시 복원하지 않습니다.
@@ -69,7 +73,9 @@ class MovieLogApp extends StatelessWidget {
           create: (_) => signUpService ?? SignUpService(publicClient),
         ),
         // 보호 Client
-        Provider<MemberApiService>(create: (_) => MemberApiService(authClient)),
+        Provider<MemberApiService>(
+          create: (_) => memberApiService ?? MemberApiService(authClient),
+        ),
         // 평점은 아직 v6(memberId path) — v7 보호 요청으로 옮길 때 authClient도 함께 받습니다.
         Provider<RatingApiService>(
           create: (_) => ratingApiService ?? RatingApiService(publicClient),
