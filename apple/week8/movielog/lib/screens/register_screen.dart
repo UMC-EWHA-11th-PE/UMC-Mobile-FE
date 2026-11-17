@@ -30,7 +30,7 @@ typedef FieldValidator = String? Function(String? value);
 /// 두 결과를 함께 보여주고, 닉네임·이메일이 모두 사용 가능해야 가입하기가 켜집니다.
 ///
 /// 7주차 — 가입하기가 POST /v6/members를 보냅니다.
-/// - 성공: 응답의 memberId를 [LearningMemberSession]에 저장하고 영화 목록으로 이동
+/// - 성공: 응답의 memberId를 [LearningMemberSession]에 저장하고 로그인 화면으로 이동 (8주차)
 /// - 400 비밀번호 형식: 비밀번호 입력칸 errorText
 /// - 409 이메일·닉네임 중복(최종 판정) 등: 서버 message를 Snackbar로
 /// - 제출 중: 버튼 로딩, 입력·뒤로가기 막기
@@ -144,7 +144,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      context.go('/movies');
+      // 8주차 — 가입만으로는 JWT가 없으므로 로그인 화면으로 보냅니다.
+      context.go('/login');
       return;
     }
 
@@ -158,27 +159,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  /// 시작 화면에서 go로 들어와 돌아갈 화면이 쌓여 있지 않으므로 시작 화면으로 go합니다.
+  /// 로그인 화면에서 go로 들어와 돌아갈 화면이 쌓여 있지 않으므로 로그인 화면으로 go합니다.
   /// 제출 중에는 요청 결과를 반영하지 못한 채 사라지지 않도록 이동하지 않습니다.
-  void _backToStart() {
+  void _backToLogin() {
     if (context.read<SignUpViewModel>().isSubmitting) return;
-    context.go('/start');
+    context.go('/login');
   }
 
   @override
   Widget build(BuildContext context) {
-    // 시스템 뒤로가기(Android 뒤로 버튼 등)도 헤더 화살표와 같이 시작 화면으로 보냅니다.
-    // canPop은 항상 false라 스와이프 백도 막히고, 제출 중에는 _backToStart가 이동하지 않습니다.
+    // 시스템 뒤로가기(Android 뒤로 버튼 등)도 헤더 화살표와 같이 로그인 화면으로 보냅니다.
+    // canPop은 항상 false라 스와이프 백도 막히고, 제출 중에는 _backToLogin가 이동하지 않습니다.
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) _backToStart();
+        if (!didPop) _backToLogin();
       },
       child: Scaffold(
         appBar: CommonAppBar(
           title: '회원가입',
           titleStyle: AppTheme.appBarTitleBold,
-          onBack: _backToStart,
+          onBack: _backToLogin,
         ),
         body: SafeArea(
           // 키보드가 올라와도 입력창이 가려지지 않도록 스크롤 가능하게 만듭니다.
@@ -646,7 +647,7 @@ class _SignupFooter extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               GestureDetector(
-                onTap: () {}, // 2주차에는 로그인 화면 이동을 연결하지 않습니다.
+                onTap: () => context.go('/login'),
                 child: Text(
                   '로그인',
                   style: textTheme.titleMedium?.copyWith(color: colors.primary),

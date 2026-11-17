@@ -5,24 +5,22 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import 'package:movielog/app/movie_log_app.dart';
-import 'package:movielog/router/app_router.dart';
 import 'package:movielog/view_models/learning_member_session.dart';
 import 'package:movielog/widgets/movie_card.dart';
 
 import 'fake_sign_up.dart';
 import 'fake_ratings.dart';
+import 'fake_auth.dart';
 import 'fake_tmdb.dart';
 
 void main() {
   setUp(() {
-    // AppRouter.router는 static이라 테스트마다 시작 화면으로 되돌림
-    AppRouter.router.go('/start');
     // 영화 목록이 마지막 선택 장르를 읽으므로 메모리 저장소로 대체
     SharedPreferencesAsyncPlatform.instance =
         InMemorySharedPreferencesAsync.empty();
   });
 
-  testWidgets('시작 → 회원가입 → 영화 목록으로 이동하고, 회원가입 뒤로가기는 시작 화면, 목록에서는 뒤로 갈 수 없다', (
+  testWidgets('로그아웃 상태면 로그인 → 회원가입으로 이동하고, 회원가입 뒤로가기·가입 완료는 로그인 화면으로 간다', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -31,33 +29,43 @@ void main() {
 
     await tester.pumpWidget(
       MovieLogApp(
+        authViewModel: await signedOutAuth(),
         tmdbMovieService: fakeTmdbService(),
         signUpService: fakeSignUpService(),
       ),
     );
     await tester.pumpAndSettle();
 
-    // 시작 화면 (1주차 W1-00)
-    expect(find.text('영화의 순간을\n기록하세요'), findsOneWidget);
-    await tester.tap(find.text('시작하기'));
+    String location() =>
+        appRouter(tester).routerDelegate.currentConfiguration.uri.path;
+
+    // 토큰이 없으므로 스플래시(/start)에서 로그인 화면으로 redirect
+    expect(location(), '/login');
+    await tester.tap(find.text('회원가입'));
     await tester.pumpAndSettle();
 
-    // 회원가입: 쌓인 화면은 없지만 헤더 뒤로가기는 시작 화면으로 이동
+    // 회원가입: 쌓인 화면은 없지만 헤더 뒤로가기는 로그인 화면으로 이동
+    expect(location(), '/register');
     expect(find.text('환영합니다!'), findsOneWidget);
     expect(find.text('간단한 정보만 입력하고 시작해보세요.'), findsOneWidget);
-    expect(AppRouter.router.canPop(), isFalse);
+    expect(appRouter(tester).canPop(), isFalse);
     await tester.tap(find.byTooltip('뒤로가기'));
     await tester.pumpAndSettle();
-    expect(find.text('영화의 순간을\n기록하세요'), findsOneWidget);
+    expect(location(), '/login');
 
-    // 시스템 뒤로가기(Android 뒤로 버튼)도 시작 화면으로 이동
-    await tester.tap(find.text('시작하기'));
+    // 시스템 뒤로가기(Android 뒤로 버튼)도 로그인 화면으로 이동
+    await tester.tap(find.text('회원가입'));
     await tester.pumpAndSettle();
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('영화의 순간을\n기록하세요'), findsOneWidget);
+    expect(location(), '/login');
 
-    await tester.tap(find.text('시작하기'));
+    // 로그아웃 상태에서 보호 화면으로 가려 해도 로그인 화면에 머묾
+    appRouter(tester).go('/movies');
+    await tester.pumpAndSettle();
+    expect(location(), '/login');
+
+    await tester.tap(find.text('회원가입'));
     await tester.pumpAndSettle();
 
     // 검증 전에는 가입하기 비활성
@@ -93,17 +101,10 @@ void main() {
     await tester.tap(find.text('가입하기'));
     await tester.pumpAndSettle();
 
-    // 영화 목록(/movies) 도착 + 가입 완료 안내, 뒤로 돌아갈 화면 없음
-    String location() =>
-        AppRouter.router.routerDelegate.currentConfiguration.uri.path;
-    expect(location(), '/movies');
+    // 가입만으로는 JWT가 없으므로 로그인 화면(/login) 도착 + 가입 완료 안내
+    expect(location(), '/login');
     expect(find.text('회원가입이 완료되었습니다.'), findsOneWidget);
-    expect(AppRouter.router.canPop(), isFalse);
-
-    // 시스템 뒤로가기(Android 뒤로 버튼)를 눌러도 목록에 그대로 있음
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    expect(location(), '/movies');
+    expect(appRouter(tester).canPop(), isFalse);
   });
 
   testWidgets('홈 인기 영화 카드를 누르면 같은 ID의 영화 상세로 이동한다', (
@@ -113,9 +114,14 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/home');
+    appRouter(tester).go('/home');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('마션 레스큐'));
@@ -124,7 +130,11 @@ void main() {
     expect(find.text('마션 레스큐'), findsOneWidget);
     // push로 쌓인 맨 위 화면의 경로
     expect(
-      AppRouter.router.routerDelegate.currentConfiguration.last.matchedLocation,
+      appRouter(tester)
+          .routerDelegate
+          .currentConfiguration
+          .last
+          .matchedLocation,
       '/movies/7',
     );
 
@@ -142,18 +152,23 @@ void main() {
     addTearDown(tester.view.reset);
 
     // push로 쌓인 맨 위 화면의 경로
-    String currentPath() => AppRouter
-        .router
-        .routerDelegate
-        .currentConfiguration
-        .last
-        .matchedLocation;
+    String currentPath() =>
+        appRouter(tester)
+            .routerDelegate
+            .currentConfiguration
+            .last
+            .matchedLocation;
 
-    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // 홈 배너 → 상세 (장르·러닝타임도 상세와 같은 Mock)
-    AppRouter.router.go('/home');
+    appRouter(tester).go('/home');
     await tester.pumpAndSettle();
     expect(find.text('별빛 아래 우리'), findsOneWidget);
     expect(find.text('로맨스 · 드라마 · 124분'), findsOneWidget);
@@ -163,7 +178,7 @@ void main() {
     expect(find.text('별빛 아래 우리'), findsOneWidget);
 
     // 목록 카드 → 상세
-    AppRouter.router.go('/movies');
+    appRouter(tester).go('/movies');
     await tester.pumpAndSettle();
     await tester.tap(find.text('별빛 아래 우리'));
     await tester.pumpAndSettle();
@@ -172,10 +187,15 @@ void main() {
   });
 
   testWidgets('하단 탭으로 홈/영화/마이를 이동한다', (WidgetTester tester) async {
-    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
     await tester.pumpAndSettle();
 
-    AppRouter.router.go('/home');
+    appRouter(tester).go('/home');
     await tester.pumpAndSettle();
     // Material 3 NavigationBar로 탭을 전환
     expect(find.byType(NavigationBar), findsOneWidget);
@@ -192,9 +212,14 @@ void main() {
   });
 
   testWidgets('하단 네비게이션이 Figma 크기를 따른다', (WidgetTester tester) async {
-    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/home');
+    appRouter(tester).go('/home');
     await tester.pumpAndSettle();
 
     // 라벨을 감싸는 pill(StadiumBorder Material)의 크기
@@ -214,9 +239,14 @@ void main() {
   });
 
   testWidgets('홈 헤더가 Figma 크기를 따른다', (WidgetTester tester) async {
-    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/home');
+    appRouter(tester).go('/home');
     await tester.pumpAndSettle();
 
     expect(find.text('MovieLog'), findsOneWidget);
@@ -234,9 +264,14 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/home');
+    appRouter(tester).go('/home');
     await tester.pumpAndSettle();
 
     // greeting section 388 x 104
@@ -284,9 +319,14 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/home');
+    appRouter(tester).go('/home');
     await tester.pumpAndSettle();
 
     // 섹션 제목 줄 높이 28, 배너 섹션(padding-bottom 24) 바로 아래
@@ -348,10 +388,13 @@ void main() {
         requests.where((uri) => uri.path.endsWith('/movie/popular')).length;
 
     await tester.pumpWidget(
-      MovieLogApp(tmdbMovieService: fakeTmdbService(requests: requests)),
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(requests: requests),
+      ),
     );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/home');
+    appRouter(tester).go('/home');
     await tester.pumpAndSettle();
     expect(popularCount(), 1);
 
@@ -374,9 +417,14 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/home');
+    appRouter(tester).go('/home');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('전체보기'));
@@ -391,9 +439,14 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+      await tester.pumpWidget(
+        MovieLogApp(
+          authViewModel: await signedInAuth(),
+          tmdbMovieService: fakeTmdbService(),
+        ),
+      );
       await tester.pumpAndSettle();
-      AppRouter.router.go('/home');
+      appRouter(tester).go('/home');
       await tester.pumpAndSettle();
       await tester.tap(find.text('영화'));
       await tester.pumpAndSettle();
@@ -469,9 +522,14 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+      await tester.pumpWidget(
+        MovieLogApp(
+          authViewModel: await signedInAuth(),
+          tmdbMovieService: fakeTmdbService(),
+        ),
+      );
       await tester.pumpAndSettle();
-      AppRouter.router.go('/home');
+      appRouter(tester).go('/home');
       await tester.pumpAndSettle();
       // 홈 추천 신작(Mock 상세, Figma W3-03 내용)으로 상세 이동
       await tester.tap(find.text('상세보기'));
@@ -538,9 +596,14 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+      await tester.pumpWidget(
+        MovieLogApp(
+          authViewModel: await signedInAuth(),
+          tmdbMovieService: fakeTmdbService(),
+        ),
+      );
       await tester.pumpAndSettle();
-      AppRouter.router.go('/movies');
+      appRouter(tester).go('/movies');
       await tester.pumpAndSettle();
       await tester.tap(find.text('별빛 아래 우리'));
       await tester.pumpAndSettle();
@@ -602,13 +665,14 @@ void main() {
     final server = FakeRatingServer();
     await tester.pumpWidget(
       MovieLogApp(
+        authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
         ratingApiService: server.service,
         learningMemberSession: LearningMemberSession()..setMemberId(42),
       ),
     );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/movies/1');
+    appRouter(tester).go('/movies/1');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('평점 남기기'));
@@ -635,7 +699,7 @@ void main() {
     );
 
     // 마이페이지 → 내가 등록한 평점에서 GET으로 다시 확인
-    AppRouter.router.go('/my');
+    appRouter(tester).go('/my');
     await tester.pumpAndSettle();
     await tester.tap(find.text('내가 등록한 평점'));
     await tester.pumpAndSettle();
@@ -650,9 +714,14 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/home');
+    appRouter(tester).go('/home');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('상세보기'));
@@ -671,12 +740,13 @@ void main() {
     final requests = <String>[];
     await tester.pumpWidget(
       MovieLogApp(
+        authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
         ratingApiService: fakeRatingApiService(requests: requests),
       ),
     );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/my');
+    appRouter(tester).go('/my');
     await tester.pumpAndSettle();
     await tester.tap(find.text('내가 등록한 평점'));
     await tester.pumpAndSettle();
@@ -695,6 +765,7 @@ void main() {
     final requests = <String>[];
     await tester.pumpWidget(
       MovieLogApp(
+        authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
         ratingApiService: fakeRatingApiService(
           ratings: [fakeRatingJson(movieId: 1)],
@@ -704,14 +775,18 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/my');
+    appRouter(tester).go('/my');
     await tester.pumpAndSettle();
     expect(find.byType(NavigationBar), findsOneWidget);
 
     await tester.tap(find.text('내가 등록한 평점'));
     await tester.pumpAndSettle();
     expect(
-      AppRouter.router.routerDelegate.currentConfiguration.last.matchedLocation,
+      appRouter(tester)
+          .routerDelegate
+          .currentConfiguration
+          .last
+          .matchedLocation,
       '/my/ratings',
     );
     expect(find.byType(NavigationBar), findsNothing);
@@ -730,9 +805,14 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MovieLogApp(tmdbMovieService: fakeTmdbService()));
+    await tester.pumpWidget(
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
     await tester.pumpAndSettle();
-    AppRouter.router.go('/home');
+    appRouter(tester).go('/home');
     await tester.pumpAndSettle();
     await tester.tap(find.text('마이'));
     await tester.pumpAndSettle();

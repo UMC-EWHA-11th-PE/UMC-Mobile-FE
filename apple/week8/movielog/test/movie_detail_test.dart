@@ -8,13 +8,13 @@ import 'package:shared_preferences_platform_interface/shared_preferences_async_p
 import 'package:movielog/app/movie_log_app.dart';
 import 'package:movielog/data/services/rating_api_service.dart';
 import 'package:movielog/data/services/tmdb_movie_service.dart';
-import 'package:movielog/router/app_router.dart';
 import 'package:movielog/screens/movie_detail_screen.dart';
 import 'package:movielog/theme/app_theme.dart';
 import 'package:movielog/view_models/movie_detail_view_model.dart';
 import 'package:movielog/widgets/rating_dialog.dart';
 
 import 'fake_ratings.dart';
+import 'fake_auth.dart';
 import 'fake_tmdb.dart';
 
 /// 라우터와 같은 방식으로 상세 ViewModel을 만들어 붙입니다.
@@ -196,17 +196,25 @@ void main() {
   testWidgets('영화 목록 카드를 누르면 TMDB id로 상세를 요청한다', (tester) async {
     _useTallView(tester);
     final requests = <Uri>[];
-    AppRouter.router.go('/movies');
     await tester.pumpWidget(
-      MovieLogApp(tmdbMovieService: fakeTmdbService(requests: requests)),
+      MovieLogApp(
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(requests: requests),
+      ),
     );
+    await tester.pumpAndSettle();
+    appRouter(tester).go('/movies');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('우주의 끝에서'));
     await tester.pumpAndSettle();
 
     expect(
-      AppRouter.router.routerDelegate.currentConfiguration.last.matchedLocation,
+      appRouter(tester)
+          .routerDelegate
+          .currentConfiguration
+          .last
+          .matchedLocation,
       '/movies/2',
     );
     expect(requests.last.path, endsWith('/movie/2'));
@@ -218,15 +226,17 @@ void main() {
   ) async {
     _useTallView(tester);
     final requests = <Uri>[];
-    AppRouter.router.go('/movies');
     await tester.pumpWidget(
       MovieLogApp(
+        authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(
           requests: requests,
           delay: const Duration(milliseconds: 100),
         ),
       ),
     );
+    await tester.pumpAndSettle();
+    appRouter(tester).go('/movies');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('별빛 아래 우리'));
