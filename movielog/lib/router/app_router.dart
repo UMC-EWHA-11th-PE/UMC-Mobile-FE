@@ -15,6 +15,7 @@ import '../screens/login_screen.dart';
 import '../screens/main_screen.dart';
 import '../screens/movie_detail_loader.dart';
 import '../screens/movie_list_screen.dart';
+import '../screens/movie_search_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/sign_up_screen.dart';
 import '../screens/splash_screen.dart';
@@ -194,6 +195,20 @@ class AppRouter {
               ],
             ),
           ],
+        ),
+        GoRoute(
+          path: '/movies/search',
+          builder: (context, state) =>
+              ChangeNotifierProvider<PagedMoviesViewModel>(
+                create: (context) => PagedMoviesViewModel(
+                  tmdbApi: context.read<TmdbMovieService>(),
+                ),
+                child: MovieSearchScreen(
+                  onOpenMovie: (movie) async {
+                    await context.push('/movies/${movie.id}', extra: movie);
+                  },
+                ),
+              ),
         ),
         GoRoute(
           path: '/movies/:movieId',
