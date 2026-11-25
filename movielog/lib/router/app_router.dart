@@ -9,6 +9,7 @@ import '../data/services/favorite_api_service.dart';
 import '../data/services/member_api_service.dart';
 import '../data/services/tmdb_movie_service.dart';
 import '../screens/edit_profile_screen.dart';
+import '../screens/favorites_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/main_screen.dart';
@@ -20,6 +21,7 @@ import '../screens/splash_screen.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/edit_profile_view_model.dart';
 import '../view_models/favorite_detail_view_model.dart';
+import '../view_models/favorites_view_model.dart';
 import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
 import '../view_models/sign_up_view_model.dart';
@@ -116,6 +118,49 @@ class AppRouter {
               path: '/my',
               builder: (context, state) => const ProfileScreen(),
               routes: [
+                GoRoute(
+                  path: 'favorites',
+                  parentNavigatorKey: rootNavigatorKey,
+                  builder: (context, state) {
+                    final auth = context.watch<AuthViewModel>();
+                    final member = auth.member;
+                    final guard = context.read<SessionGuard>();
+                    if (member == null || guard.accountId != member.email) {
+                      return Scaffold(
+                        appBar: AppBar(
+                          centerTitle: true,
+                          title: const Text('내 즐겨찾기'),
+                        ),
+                        body: Center(
+                          child: auth.memberStatus == MemberLoadStatus.error
+                              ? MovieLogButton(
+                                  label: '내 정보 다시 조회',
+                                  onPressed: () => auth.loadMember(force: true),
+                                )
+                              : const CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+                    return ChangeNotifierProvider(
+                      key: ValueKey('${member.email}:${guard.generation}'),
+                      create: (_) => FavoritesViewModel(
+                        favoriteApi: context.read<FavoriteApiService>(),
+                        tmdbApi: context.read<TmdbMovieService>(),
+                        sessionGuard: guard,
+                        accountId: member.email,
+                        onSessionExpired: auth.expireSession,
+                      ),
+                      child: FavoritesScreen(
+                        onOpenMovie: (movie) async {
+                          await context.push(
+                            '/movies/${movie.id}',
+                            extra: movie,
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
                 GoRoute(
                   path: 'profile/edit', // 최종 경로: /my/profile/edit
                   parentNavigatorKey: rootNavigatorKey, // 하단 탭바를 가립니다.

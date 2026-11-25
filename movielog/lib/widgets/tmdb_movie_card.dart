@@ -5,9 +5,10 @@ import '../data/models/tmdb_movie_dto.dart';
 import 'tmdb_poster_image.dart';
 
 class TmdbMovieCard extends StatelessWidget {
-  const TmdbMovieCard({super.key, required this.movie});
+  const TmdbMovieCard({super.key, required this.movie, this.onTap});
 
   final TmdbMovieDto movie;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -17,8 +18,7 @@ class TmdbMovieCard extends StatelessWidget {
         : null;
 
     return InkWell(
-      // TMDB id를 그대로 전달 (배열 index 사용 X)
-      onTap: () => context.push('/movies/${movie.id}', extra: movie),
+      onTap: onTap ?? () => context.push('/movies/${movie.id}', extra: movie),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
