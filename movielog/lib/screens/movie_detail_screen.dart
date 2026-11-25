@@ -42,7 +42,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     );
   }
 
-  /// 평점 등록: POST /v7/ratings (movieId = TMDB id)
+  /// 평점 등록: POST /v8/ratings (movieId = TMDB id)
   Future<void> openCreateDialog() async {
     final ratings = context.read<SessionRatingsViewModel>();
     final saved = await showDialog<bool>(
@@ -60,7 +60,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     _showSnackBar('평점을 등록했습니다.');
   }
 
-  /// 평점 수정: PATCH /v7/ratings/{ratingId}
+  /// 평점 수정: PATCH /v8/ratings/{ratingId}
   /// 기존 score·comment를 채워서 열고, 두 값을 항상 함께 보냅니다.
   Future<void> openEditDialog(RatingDto rating) async {
     final ratings = context.read<SessionRatingsViewModel>();
@@ -81,7 +81,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     _showSnackBar('평점을 수정했습니다.');
   }
 
-  /// 평점 삭제: DELETE /v7/ratings/{ratingId} (확인 Dialog 필수)
+  /// 평점 삭제: DELETE /v8/ratings/{ratingId} (확인 Dialog 필수)
   Future<void> openDeleteDialog(RatingDto rating) async {
     final ratings = context.read<SessionRatingsViewModel>();
     final deleted = await showDialog<bool>(

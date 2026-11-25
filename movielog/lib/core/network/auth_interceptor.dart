@@ -2,20 +2,27 @@ import 'package:dio/dio.dart';
 
 import '../storage/token_storage.dart';
 
-/// 보호 API(내 정보, 평점 등록·수정·삭제)에만 MovieLog JWT를 붙입니다.
-/// TMDB Client와 공개 Client에는 등록하지 않습니다.
 class AuthInterceptor extends Interceptor {
   AuthInterceptor(this._storage);
 
   final TokenStorage _storage;
 
   bool _isProtected(RequestOptions options) {
-    final uri = options.uri;
-    final path = uri.path;
-    return uri.host == 'workbook.devnoco.com' &&
-        (path == '/v7/members/me' ||
-            path == '/v7/ratings' ||
-            path.startsWith('/v7/ratings/'));
+    if (options.uri.host != 'workbook.devnoco.com') return false;
+    final path = options.uri.path;
+    final method = options.method.toUpperCase();
+
+    final w8Protected = path == '/v8/members/me' ||
+        path == '/v8/ratings' ||
+        path.startsWith('/v8/ratings/');
+
+    final favorites =
+        (path == '/v8/favorites' && (method == 'GET' || method == 'POST')) ||
+            (RegExp(r'^/v8/favorites/[1-9]\d*$').hasMatch(path) &&
+                (method == 'GET' || method == 'DELETE'));
+    final movieRecord = path == '/v8/movie-records' && method == 'POST';
+
+    return w8Protected || favorites || movieRecord;
   }
 
   @override
@@ -27,7 +34,7 @@ class AuthInterceptor extends Interceptor {
       handler.next(options);
       return;
     }
-    options.headers.remove('Authorization'); // 이전 요청의 토큰을 재사용하지 않습니다.
+    options.headers.remove('Authorization');
     try {
       final token = await _storage.readAccessToken();
       if (token != null && token.isNotEmpty) {
@@ -35,7 +42,6 @@ class AuthInterceptor extends Interceptor {
       }
       handler.next(options);
     } catch (_) {
-      // 서버 401과 기기 저장소 실패는 다른 오류입니다.
       handler.reject(
         DioException(
           requestOptions: options,

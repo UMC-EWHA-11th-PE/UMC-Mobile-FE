@@ -1,6 +1,6 @@
 import 'common_response.dart';
 
-/// GET/PATCH /v7/members/me 의 result
+/// GET/PATCH /v8/members/me 의 result
 class MemberInfo {
   const MemberInfo({
     required this.email,
