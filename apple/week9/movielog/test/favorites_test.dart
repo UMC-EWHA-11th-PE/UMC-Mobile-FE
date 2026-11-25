@@ -12,6 +12,7 @@ import 'package:movielog/data/models/tmdb_movie_dto.dart';
 import 'package:movielog/data/services/tmdb_movie_service.dart';
 import 'package:movielog/screens/favorites_screen.dart';
 import 'package:movielog/theme/app_theme.dart';
+import 'package:movielog/view_models/auth_view_model.dart';
 import 'package:movielog/view_models/favorites_view_model.dart';
 import 'package:movielog/widgets/favorite_button.dart';
 
@@ -403,5 +404,62 @@ void main() {
 
     expect(find.text('별빛 아래 우리'), findsNothing);
     expect(find.text('아직 즐겨찾기한 영화가 없습니다.'), findsOneWidget);
+  });
+
+  group('내 즐겨찾기 — 세션 만료·권한', () {
+    Future<(AuthViewModel, FakeFavoriteServer, InMemoryTokenStorage)> open(
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final storage = InMemoryTokenStorage('jwt');
+      final auth = await signedInAuth(storage: storage);
+      final favorites = FakeFavoriteServer(movieIds: [1]);
+      await tester.pumpWidget(
+        MovieLogApp(
+          favoriteApiService: favorites.service,
+          authViewModel: auth,
+          tmdbMovieService: fakeTmdbService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      appRouter(tester).go('/my');
+      await tester.pumpAndSettle();
+      return (auth, favorites, storage);
+    }
+
+    testWidgets('AUTH401_4면 세션을 한 번만 정리하고 로그인 화면으로 간다', (tester) async {
+      final (auth, favorites, storage) = await open(tester);
+      favorites.nextError = (status: 401, code: 'AUTH401_4');
+
+      await tester.tap(find.text('내 즐겨찾기'));
+      await tester.pumpAndSettle();
+
+      expect(auth.status, AuthStatus.signedOut);
+      expect(storage.deleteCount, 1);
+      expect(find.byType(FavoritesScreen), findsNothing);
+      expect(
+        appRouter(tester).routerDelegate.currentConfiguration.uri.path,
+        '/login',
+      );
+    });
+
+    testWidgets('403·네트워크 실패는 로그아웃하지 않고 오류 화면만 보여준다', (tester) async {
+      final (auth, favorites, storage) = await open(tester);
+
+      favorites.nextError = (status: 403, code: 'COMMON403');
+      await tester.tap(find.text('내 즐겨찾기'));
+      await tester.pumpAndSettle();
+      expect(find.text('즐겨찾기를 불러오지 못했습니다.'), findsOneWidget);
+
+      favorites.failMethods.add('GET');
+      await tester.tap(find.text('다시 시도'));
+      await tester.pumpAndSettle();
+      expect(find.text('즐겨찾기를 불러오지 못했습니다.'), findsOneWidget);
+
+      expect(auth.status, AuthStatus.signedIn);
+      expect(storage.deleteCount, 0);
+    });
   });
 }

@@ -158,4 +158,30 @@ void main() {
     expect(find.byType(MovieSearchScreen), findsNothing);
     expect(find.text('마이'), findsOneWidget);
   });
+
+  testWidgets('검색 결과 카드를 누르면 영화 상세로 이동한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
+        authViewModel: await signedInAuth(),
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    appRouter(tester).go('/movies');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('검색'));
+    await tester.pumpAndSettle();
+
+    await _search(tester, '별빛');
+    await tester.tap(find.text('별빛 아래 우리'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MovieSearchScreen), findsNothing);
+    expect(find.text('Cinema Archive'), findsOneWidget); // 상세 헤더
+    expect(find.text('별빛 아래 우리'), findsOneWidget);
+  });
 }
