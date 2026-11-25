@@ -23,7 +23,7 @@ import '../view_models/edit_profile_view_model.dart';
 import '../view_models/favorite_detail_view_model.dart';
 import '../view_models/favorites_view_model.dart';
 import '../view_models/movie_home_view_model.dart';
-import '../view_models/movie_list_view_model.dart';
+import '../view_models/paged_movies_view_model.dart';
 import '../view_models/sign_up_view_model.dart';
 import '../widgets/movielog_button.dart';
 
@@ -107,10 +107,10 @@ class AppRouter {
             GoRoute(
               path: '/movies',
               builder: (context, state) =>
-                  ChangeNotifierProvider<MovieListViewModel>(
-                    create: (context) =>
-                        MovieListViewModel(context.read<TmdbMovieService>())
-                          ..loadInitial(),
+                  ChangeNotifierProvider<PagedMoviesViewModel>(
+                    create: (context) => PagedMoviesViewModel(
+                      tmdbApi: context.read<TmdbMovieService>(),
+                    ),
                     child: const MovieListScreen(),
                   ),
             ),

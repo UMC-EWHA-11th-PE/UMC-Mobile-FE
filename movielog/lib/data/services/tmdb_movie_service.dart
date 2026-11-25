@@ -34,6 +34,22 @@ class TmdbMovieService {
     return TmdbMoviePageDto.fromJson(response.data as Map<String, dynamic>);
   }
 
+  Future<TmdbMoviePageDto> searchMovies({
+    required int page,
+    required String query,
+  }) async {
+    final response = await _dio.get(
+      '/search/movie',
+      queryParameters: {
+        'query': query,
+        'page': page,
+        'language': 'ko-KR',
+        'include_adult': false,
+      },
+    );
+    return TmdbMoviePageDto.fromJson(response.data as Map<String, dynamic>);
+  }
+
   /// 6주차: movieId 하나로 영화 한 편을 조회합니다. (TMDB GET /movie/{movie_id})
   Future<TmdbMovieDto> fetchMovieDetail(int movieId) async {
     final response = await _dio.get(
