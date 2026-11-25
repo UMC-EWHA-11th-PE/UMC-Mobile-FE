@@ -6,7 +6,9 @@ import '../models/movie_detail.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_theme.dart';
+import '../view_models/favorite_detail_view_model.dart';
 import '../widgets/app_header.dart';
+import '../widgets/favorite_button.dart';
 import '../widgets/movie_rating_indicator.dart';
 import '../widgets/pill_button.dart';
 import '../widgets/poster_image.dart';
@@ -32,6 +34,9 @@ import '../view_models/movie_detail_view_model.dart';
 /// [MovieDetailViewModel.createRating]으로 POST /v8/ratings(JWT)를 보냅니다.
 /// 저장이 끝나 Dialog가 true를 돌려준 뒤에만 성공 Snackbar를 띄웁니다.
 /// 이 화면은 로그인해야 열리므로 7주차의 학습용 회원가입 안내는 없앴습니다.
+///
+/// 9주차 — 즐겨찾기 버튼을 [FavoriteDetailViewModel]에 연결합니다. (POST·DELETE /v8/favorites)
+/// 요청 중에는 버튼에 로딩을, 실패하면 이전 버튼 상태를 유지한 채 하단에 안내를 보여줍니다.
 class MovieDetailScreen extends StatefulWidget {
   const MovieDetailScreen({super.key, required this.movieId, this.detail});
 
@@ -46,9 +51,6 @@ class MovieDetailScreen extends StatefulWidget {
 }
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
-  /// 즐겨찾기 여부 — 실제 API 연결은 8주차, 3주차에서는 화면 내부 상태만 바꿉니다.
-  bool _bookmarked = false;
-
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -57,10 +59,15 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       );
   }
 
-  void _toggleBookmark() {
-    setState(() => _bookmarked = !_bookmarked);
-    _showMessage(_bookmarked ? '즐겨찾기에 추가했습니다.' : '즐겨찾기를 해제했습니다.');
+  /// 서버가 성공을 돌려줘 상태가 바뀐 경우에만 Snackbar를 띄웁니다.
+  Future<void> _toggleFavorite() async {
+    final changedTo = await context.read<FavoriteDetailViewModel>().toggle();
+    if (!mounted || changedTo == null) return;
+    _showMessage(changedTo ? '즐겨찾기에 추가했습니다.' : '즐겨찾기를 해제했습니다.');
   }
+
+  /// 홈 추천 신작(Mock 영화)은 TMDB id가 아니므로 서버 즐겨찾기에 등록하지 않습니다.
+  void _favoriteMockMovie() => _showMessage('예시 영화는 즐겨찾기할 수 없습니다.');
 
   Future<void> _rate() async {
     final viewModel = context.read<MovieDetailViewModel>();
@@ -132,11 +139,27 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           _SynopsisSection(paragraphs: detail.synopsis),
         ],
       ),
-      bottomNavigationBar: _ActionBar(
-        bookmarked: _bookmarked,
-        onBookmark: _toggleBookmark,
-        onRate: isMock ? _rateMockMovie : (canRate ? _rate : null),
-      ),
+      bottomNavigationBar: isMock
+          ? _ActionBar(
+              favoriteButton: FavoriteButton(
+                isFavorite: false,
+                textStyle: Theme.of(context).textTheme.titleSmall,
+                onPressed: _favoriteMockMovie,
+              ),
+              onRate: _rateMockMovie,
+            )
+          : Consumer<FavoriteDetailViewModel>(
+              builder: (context, favorite, _) => _ActionBar(
+                favoriteButton: FavoriteButton(
+                  isFavorite: favorite.isFavorite ?? false,
+                  isLoading: favorite.isBusy,
+                  textStyle: Theme.of(context).textTheme.titleSmall,
+                  onPressed: favorite.canRequest ? _toggleFavorite : null,
+                ),
+                errorMessage: favorite.errorMessage,
+                onRate: canRate ? _rate : null,
+              ),
+            ),
     );
   }
 }
@@ -379,13 +402,16 @@ class _SynopsisSection extends StatelessWidget {
 /// 하단 고정 액션 버튼 — 높이 81, padding 16, gap 8, 배경 #FAF9F5, border-top 1px #CBC4D2
 class _ActionBar extends StatelessWidget {
   const _ActionBar({
-    required this.bookmarked,
-    required this.onBookmark,
+    required this.favoriteButton,
     required this.onRate,
+    this.errorMessage,
   });
 
-  final bool bookmarked;
-  final VoidCallback onBookmark;
+  /// 즐겨찾기 버튼 — 상태는 [FavoriteDetailViewModel]이 정합니다.
+  final Widget favoriteButton;
+
+  /// 즐겨찾기 실패 안내 — 있으면 버튼 위에 보여주고, 버튼은 이전 상태 그대로입니다.
+  final String? errorMessage;
 
   /// null이면 평점 남기기가 비활성 (영화 id를 모를 때)
   final VoidCallback? onRate;
@@ -409,7 +435,13 @@ class _ActionBar extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [_buttons(colors, labelStyle)],
+            children: [
+              if (errorMessage != null) ...[
+                _FavoriteErrorBox(message: errorMessage!),
+                const SizedBox(height: 12),
+              ],
+              _buttons(colors, labelStyle),
+            ],
           ),
         ),
       ),
@@ -422,21 +454,8 @@ class _ActionBar extends StatelessWidget {
         // Figma 너비 176 : 174
         Expanded(
           flex: 176,
-          // 테두리형 — border 1px #6750A4, 아이콘 14 x 18
-          child: PillButton(
-            label: '즐겨찾기',
-            // 즐겨찾기 상태는 제공된 북마크 아이콘(W3-REQ)을 사용합니다.
-            iconAsset: bookmarked
-                ? 'assets/icons/bookmark_filled.png'
-                : 'assets/icons/detail_bookmark.svg',
-            iconSize: const Size(14, 18),
-            color: colors.primary,
-            foregroundColor: colors.primary,
-            outlined: true,
-            textStyle: labelStyle,
-            selected: bookmarked,
-            onPressed: onBookmark,
-          ),
+          // 즐겨찾기 상태는 제공된 북마크 아이콘(W3-REQ)을 사용합니다.
+          child: favoriteButton,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -454,6 +473,33 @@ class _ActionBar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 즐겨찾기 실패 안내 — W9 "실패·기존 상태 유지" 시안의 연한 빨간 박스
+/// 수치가 없어 시안 색으로 추정: 배경 #FFF2F0, 글자 #B3261E Manrope 400 / 13, radius 12
+class _FavoriteErrorBox extends StatelessWidget {
+  const _FavoriteErrorBox({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.ratingDeleteButton,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          message,
+          style: AppTheme.ratingCardBody.copyWith(color: AppColors.error),
+        ),
+      ),
     );
   }
 }

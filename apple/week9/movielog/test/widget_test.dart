@@ -11,6 +11,7 @@ import 'package:movielog/widgets/movie_card.dart';
 import 'fake_sign_up.dart';
 import 'fake_ratings.dart';
 import 'fake_auth.dart';
+import 'fake_favorites.dart';
 import 'fake_tmdb.dart';
 
 void main() {
@@ -29,6 +30,7 @@ void main() {
 
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedOutAuth(),
         tmdbMovieService: fakeTmdbService(),
         signUpService: fakeSignUpService(),
@@ -116,6 +118,7 @@ void main() {
 
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
       ),
@@ -161,6 +164,7 @@ void main() {
 
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
       ),
@@ -189,6 +193,7 @@ void main() {
   testWidgets('하단 탭으로 홈/영화/마이를 이동한다', (WidgetTester tester) async {
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
       ),
@@ -214,6 +219,7 @@ void main() {
   testWidgets('하단 네비게이션이 Figma 크기를 따른다', (WidgetTester tester) async {
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
       ),
@@ -241,6 +247,7 @@ void main() {
   testWidgets('홈 헤더가 Figma 크기를 따른다', (WidgetTester tester) async {
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
       ),
@@ -266,6 +273,7 @@ void main() {
 
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
       ),
@@ -321,6 +329,7 @@ void main() {
 
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
       ),
@@ -389,6 +398,7 @@ void main() {
 
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(requests: requests),
       ),
@@ -419,6 +429,7 @@ void main() {
 
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
       ),
@@ -441,6 +452,7 @@ void main() {
 
       await tester.pumpWidget(
         MovieLogApp(
+          favoriteApiService: FakeFavoriteServer().service,
           authViewModel: await signedInAuth(),
           tmdbMovieService: fakeTmdbService(),
         ),
@@ -524,6 +536,7 @@ void main() {
 
       await tester.pumpWidget(
         MovieLogApp(
+          favoriteApiService: FakeFavoriteServer().service,
           authViewModel: await signedInAuth(),
           tmdbMovieService: fakeTmdbService(),
         ),
@@ -598,6 +611,7 @@ void main() {
 
       await tester.pumpWidget(
         MovieLogApp(
+          favoriteApiService: FakeFavoriteServer().service,
           authViewModel: await signedInAuth(),
           tmdbMovieService: fakeTmdbService(),
         ),
@@ -615,32 +629,25 @@ void main() {
       expect(find.text('우주의 끝에서'), findsOneWidget);
     });
 
-    testWidgets('즐겨찾기를 누르면 상태가 바뀌고 안내 메시지가 뜬다', (WidgetTester tester) async {
+    testWidgets('추천 신작(Mock 영화)은 TMDB id가 아니라 서버 즐겨찾기에 등록하지 않는다', (
+      WidgetTester tester,
+    ) async {
       await openDetail(tester);
 
       await tester.tap(find.text('즐겨찾기'));
       await tester.pump();
-      expect(find.text('즐겨찾기에 추가했습니다.'), findsOneWidget);
-      // 즐겨찾기 상태에서는 제공된 북마크 아이콘(PNG)을 사용
-      Finder bookmarkPng() => find.byWidgetPredicate(
-        (widget) =>
-            widget is Image &&
-            widget.image is AssetImage &&
-            (widget.image as AssetImage).assetName ==
-                'assets/icons/bookmark_filled.png',
+      expect(find.text('예시 영화는 즐겨찾기할 수 없습니다.'), findsOneWidget);
+      // 등록되지 않았으므로 채워진 북마크(PNG)는 보이지 않습니다.
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Image &&
+              widget.image is AssetImage &&
+              (widget.image as AssetImage).assetName ==
+                  'assets/icons/bookmark_filled.png',
+        ),
+        findsNothing,
       );
-      expect(bookmarkPng(), findsOneWidget);
-      final toggle = tester.getSemantics(
-        find
-            .ancestor(of: find.text('즐겨찾기'), matching: find.byType(Semantics))
-            .first,
-      );
-      expect(toggle.flagsCollection.isToggled, isNotNull);
-
-      await tester.tap(find.text('즐겨찾기'));
-      await tester.pump();
-      expect(find.text('즐겨찾기를 해제했습니다.'), findsOneWidget);
-      expect(bookmarkPng(), findsNothing);
     });
 
     testWidgets('추천 신작(Mock 영화)은 TMDB id가 아니라 서버에 평점을 남기지 않는다', (
@@ -665,6 +672,7 @@ void main() {
     final server = FakeRatingServer();
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
         ratingApiService: server.service,
@@ -717,6 +725,7 @@ void main() {
 
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
       ),
@@ -744,6 +753,7 @@ void main() {
     );
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
         ratingApiService: server.service,
@@ -812,6 +822,7 @@ void main() {
     final requests = <String>[];
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
         ratingApiService: fakeRatingApiService(
@@ -857,6 +868,7 @@ void main() {
 
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(),
       ),

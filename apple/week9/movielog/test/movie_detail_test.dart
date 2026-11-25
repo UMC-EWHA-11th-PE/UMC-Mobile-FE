@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,16 +8,21 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import 'package:movielog/app/movie_log_app.dart';
+import 'package:movielog/core/session/session_guard.dart';
+import 'package:movielog/data/models/member_info.dart';
 import 'package:movielog/data/models/rating_dto.dart';
 import 'package:movielog/data/services/rating_api_service.dart';
 import 'package:movielog/data/services/tmdb_movie_service.dart';
 import 'package:movielog/screens/movie_detail_screen.dart';
 import 'package:movielog/theme/app_theme.dart';
+import 'package:movielog/view_models/favorite_detail_view_model.dart';
 import 'package:movielog/view_models/movie_detail_view_model.dart';
+import 'package:movielog/widgets/favorite_button.dart';
 import 'package:movielog/widgets/rating_dialog.dart';
 
 import 'fake_ratings.dart';
 import 'fake_auth.dart';
+import 'fake_favorites.dart';
 import 'fake_tmdb.dart';
 
 /// 라우터와 같은 방식으로 상세 ViewModel을 만들어 붙입니다.
@@ -26,6 +33,8 @@ Widget _app(
   RatingApiService? ratingService,
   List<RatingDto>? created,
   List<bool>? expired,
+  FakeFavoriteServer? favorites,
+  SessionGuard? guard,
 }) => MaterialApp(
   theme: AppTheme.light,
   home: ChangeNotifierProvider<MovieDetailViewModel>(
@@ -36,7 +45,15 @@ Widget _app(
       onRatingCreated: created?.add,
       onSessionExpired: () async => expired?.add(true),
     )..load(),
-    child: MovieDetailScreen(movieId: movieId),
+    child: ChangeNotifierProvider<FavoriteDetailViewModel>(
+      create: (_) => FavoriteDetailViewModel(
+        (favorites ?? FakeFavoriteServer()).service,
+        movieId: movieId,
+        guard: guard ?? (SessionGuard()..startSession('mingo@example.com')),
+        onSessionExpired: () async => expired?.add(true),
+      )..load(),
+      child: MovieDetailScreen(movieId: movieId),
+    ),
   ),
 );
 
@@ -230,6 +247,7 @@ void main() {
     final requests = <Uri>[];
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(requests: requests),
       ),
@@ -260,6 +278,7 @@ void main() {
     final requests = <Uri>[];
     await tester.pumpWidget(
       MovieLogApp(
+        favoriteApiService: FakeFavoriteServer().service,
         authViewModel: await signedInAuth(),
         tmdbMovieService: fakeTmdbService(
           requests: requests,
@@ -281,5 +300,122 @@ void main() {
     expect(requests.last.path, endsWith('/movie/1'));
     // 상세 응답의 러닝타임·장르로 채워짐
     expect(find.text('2024 • 로맨스/드라마 • 124분'), findsOneWidget);
+  });
+
+  group('즐겨찾기 버튼 (v8)', () {
+    Finder filledBookmark() => find.byWidgetPredicate(
+      (widget) =>
+          widget is Image &&
+          widget.image is AssetImage &&
+          (widget.image as AssetImage).assetName ==
+              'assets/icons/bookmark_filled.png',
+    );
+
+    testWidgets('등록 전 → 요청 중 로딩 → 등록 후, Snackbar', (tester) async {
+      _useTallView(tester);
+      final favorites = FakeFavoriteServer();
+      await tester.pumpWidget(_app(fakeTmdbService(), 1, favorites: favorites));
+      await tester.pumpAndSettle();
+      expect(filledBookmark(), findsNothing);
+
+      final gate = Completer<void>();
+      favorites.gate = gate.future;
+      await tester.tap(find.text('즐겨찾기'));
+      await tester.pump();
+      // 요청 중: 버튼 안에 로딩
+      expect(
+        find.descendant(
+          of: find.byType(FavoriteButton),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+
+      gate.complete();
+      favorites.gate = null;
+      await tester.pumpAndSettle();
+      expect(filledBookmark(), findsOneWidget);
+      expect(find.text('즐겨찾기에 추가했습니다.'), findsOneWidget);
+      expect(favorites.movieIds, [1]);
+    });
+
+    testWidgets('이미 즐겨찾기한 영화는 채워진 북마크로 시작하고 해제할 수 있다', (tester) async {
+      _useTallView(tester);
+      final favorites = FakeFavoriteServer(movieIds: [1]);
+      await tester.pumpWidget(_app(fakeTmdbService(), 1, favorites: favorites));
+      await tester.pumpAndSettle();
+      expect(filledBookmark(), findsOneWidget);
+
+      await tester.tap(find.text('즐겨찾기'));
+      await tester.pumpAndSettle();
+      expect(filledBookmark(), findsNothing);
+      expect(find.text('즐겨찾기를 해제했습니다.'), findsOneWidget);
+    });
+
+    testWidgets('실패하면 이전 상태를 유지하고 하단에 안내를 보여준다', (tester) async {
+      _useTallView(tester);
+      final favorites = FakeFavoriteServer()..failMethods.add('POST');
+      await tester.pumpWidget(_app(fakeTmdbService(), 1, favorites: favorites));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('즐겨찾기'));
+      await tester.pumpAndSettle();
+      expect(filledBookmark(), findsNothing);
+      expect(find.text('저장하지 못했습니다. 다시 시도해 주세요.'), findsOneWidget);
+      expect(find.text('즐겨찾기에 추가했습니다.'), findsNothing);
+
+      // 다시 시도해 성공하면 안내가 사라집니다.
+      favorites.failMethods.clear();
+      await tester.tap(find.text('즐겨찾기'));
+      await tester.pumpAndSettle();
+      expect(find.text('저장하지 못했습니다. 다시 시도해 주세요.'), findsNothing);
+      expect(filledBookmark(), findsOneWidget);
+    });
+  });
+
+  testWidgets('앱 Route — 로그인한 계정의 즐겨찾기 여부로 상세 버튼이 시작하고, 다른 계정으로 바꾸면 새로 확인한다', (
+    tester,
+  ) async {
+    _useTallView(tester);
+    final favorites = FakeFavoriteServer(movieIds: [1]);
+    final memberApi = FakeMemberApiService();
+    final auth = await signedInAuth(memberApi: memberApi);
+    await tester.pumpWidget(
+      MovieLogApp(
+        favoriteApiService: favorites.service,
+        authViewModel: auth,
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    appRouter(tester).push('/movies/1');
+    await tester.pumpAndSettle();
+
+    Finder filled() => find.byWidgetPredicate(
+      (widget) =>
+          widget is Image &&
+          widget.image is AssetImage &&
+          (widget.image as AssetImage).assetName ==
+              'assets/icons/bookmark_filled.png',
+    );
+    expect(filled(), findsOneWidget);
+    expect(favorites.calls, ['GET /v8/favorites/1']);
+
+    // 다른 계정으로 다시 로그인 — 서버의 즐겨찾기도 그 계정 기준으로 바뀐다고 가정
+    await auth.logout();
+    await tester.pumpAndSettle();
+    favorites.movieIds.clear();
+    memberApi.member = MemberInfo(
+      email: 'other@example.com',
+      nickname: '다른 계정',
+      createdAt: DateTime.utc(2026, 9, 6),
+    );
+    await auth.login('other@example.com', 'password1!');
+    await tester.pumpAndSettle();
+    appRouter(tester).push('/movies/1');
+    await tester.pumpAndSettle();
+
+    expect(filled(), findsNothing);
+    expect(favorites.calls.last, 'GET /v8/favorites/1');
   });
 }

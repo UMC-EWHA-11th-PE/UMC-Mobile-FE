@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../core/session/session_guard.dart';
 import '../data/models/tmdb_movie_dto.dart';
+import '../data/services/favorite_api_service.dart';
 import '../data/services/member_api_service.dart';
 import '../data/services/sign_up_service.dart';
 import '../data/services/rating_api_service.dart';
@@ -21,6 +23,7 @@ import '../screens/splash_screen.dart';
 import '../theme/app_theme.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/edit_profile_view_model.dart';
+import '../view_models/favorite_detail_view_model.dart';
 import '../view_models/movie_detail_view_model.dart';
 import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
@@ -96,10 +99,16 @@ class AppRouter {
         // 상세 정보를 extra로 함께 받으면(홈 추천 신작 Mock) 그대로 보여줍니다.
         // 평점 등록은 path의 TMDB id만 보내고 회원은 서버가 JWT로 식별합니다. (memberId 없음)
         // 등록 응답의 평점은 이번 로그인 세션의 "내가 등록한 평점"에 보관합니다.
+        // 9주차 — 즐겨찾기는 계정별 상태라 ValueKey(email:세션 번호)로 ViewModel을 만듭니다.
+        // 계정·세션이 바뀌면 key가 달라져 이전 사용자의 ViewModel을 버리고 새로 만듭니다.
         GoRoute(
           path: '/movies/:movieId',
           builder: (context, state) {
             final movieId = int.tryParse(state.pathParameters['movieId'] ?? '');
+            // 내 정보(email)가 늦게 도착하면 다시 그려 key를 갱신합니다.
+            final email = context.select<AuthViewModel, String?>(
+              (auth) => auth.member?.email,
+            );
             final detail = state.extra;
             if (detail is MovieDetail) {
               return MovieDetailScreen(movieId: movieId, detail: detail);
@@ -109,6 +118,8 @@ class AppRouter {
             final initialMovie = detail is TmdbMovieDto && detail.id == movieId
                 ? detail
                 : null;
+            final guard = context.read<SessionGuard>();
+            // TMDB 상세(공개 정보)는 계정과 관계없으므로 바깥에 두어 key가 바뀌어도 다시 조회하지 않습니다.
             return ChangeNotifierProvider<MovieDetailViewModel>(
               create: (context) => MovieDetailViewModel(
                 context.read<TmdbMovieService>(),
@@ -120,7 +131,17 @@ class AppRouter {
                     .upsert(auth.sessionVersion, rating),
                 onSessionExpired: auth.expireSession,
               )..load(),
-              child: MovieDetailScreen(movieId: movieId),
+              // 사용자별 즐겨찾기 여부는 안쪽에서 계정·세션 key로 만듭니다.
+              child: ChangeNotifierProvider<FavoriteDetailViewModel>(
+                key: ValueKey('$email:${guard.generation}'),
+                create: (context) => FavoriteDetailViewModel(
+                  context.read<FavoriteApiService>(),
+                  movieId: movieId,
+                  guard: guard,
+                  onSessionExpired: auth.expireSession,
+                )..load(),
+                child: MovieDetailScreen(movieId: movieId),
+              ),
             );
           },
         ),

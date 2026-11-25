@@ -12,6 +12,7 @@ import 'package:movielog/view_models/learning_member_session.dart';
 import 'package:movielog/widgets/movielog_button.dart';
 
 import 'fake_auth.dart';
+import 'fake_favorites.dart';
 import 'fake_tmdb.dart';
 
 void main() {
@@ -150,6 +151,7 @@ void main() {
       final auth = await signedInAuth(memberApi: api, storage: storage);
       await tester.pumpWidget(
         MovieLogApp(
+          favoriteApiService: FakeFavoriteServer().service,
           authViewModel: auth,
           memberApiService: api,
           tmdbMovieService: fakeTmdbService(),

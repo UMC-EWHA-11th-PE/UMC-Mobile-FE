@@ -10,6 +10,7 @@ import 'package:movielog/view_models/auth_view_model.dart';
 import 'package:movielog/widgets/movielog_button.dart';
 
 import 'fake_auth.dart';
+import 'fake_favorites.dart';
 import 'fake_sign_up.dart';
 import 'fake_tmdb.dart';
 
@@ -210,6 +211,7 @@ void main() {
       await auth.initialize();
       await tester.pumpWidget(
         MovieLogApp(
+          favoriteApiService: FakeFavoriteServer().service,
           authViewModel: auth,
           tmdbMovieService: fakeTmdbService(),
           signUpService: fakeSignUpService(),
@@ -342,7 +344,11 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(
-        MovieLogApp(authViewModel: auth, tmdbMovieService: fakeTmdbService()),
+        MovieLogApp(
+          authViewModel: auth,
+          tmdbMovieService: fakeTmdbService(),
+          favoriteApiService: FakeFavoriteServer().service,
+        ),
       );
       await tester.pumpAndSettle();
     }

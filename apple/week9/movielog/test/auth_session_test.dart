@@ -10,6 +10,7 @@ import 'package:movielog/router/app_router.dart';
 import 'package:movielog/view_models/auth_view_model.dart';
 
 import 'fake_auth.dart';
+import 'fake_favorites.dart';
 import 'fake_tmdb.dart';
 
 void main() {
@@ -206,7 +207,11 @@ void main() {
 
     // 확인 전(initializing) 세션을 넘기면 앱이 첫 프레임 뒤 복원을 시작합니다.
     await tester.pumpWidget(
-      MovieLogApp(authViewModel: auth, tmdbMovieService: fakeTmdbService()),
+      MovieLogApp(
+        authViewModel: auth,
+        tmdbMovieService: fakeTmdbService(),
+        favoriteApiService: FakeFavoriteServer().service,
+      ),
     );
     await tester.pump();
 

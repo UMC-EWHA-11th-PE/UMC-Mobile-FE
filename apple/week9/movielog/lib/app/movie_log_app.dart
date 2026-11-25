@@ -109,6 +109,8 @@ class MovieLogApp extends StatelessWidget {
         // 9주차 — AuthViewModel의 sessionVersion·검증된 email을 SessionGuard로 전달합니다.
         // 응답이 도착했을 때 "지금 로그인한 그 세션의 것인지"를 이 guard로 판정합니다.
         Provider<AuthSessionBridge>(
+          // 앱이 시작될 때부터 세션 변화를 따라가도록 바로 만듭니다.
+          lazy: false,
           create: (context) {
             final auth = context.read<AuthViewModel>();
             return AuthSessionBridge(
