@@ -11,6 +11,7 @@ import '../data/services/rating_api_service.dart';
 import '../data/services/tmdb_movie_service.dart';
 import '../models/movie_detail.dart';
 import '../screens/edit_profile_screen.dart';
+import '../screens/favorites_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/main_screen.dart';
 import '../screens/movie_detail_screen.dart';
@@ -24,6 +25,7 @@ import '../theme/app_theme.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/edit_profile_view_model.dart';
 import '../view_models/favorite_detail_view_model.dart';
+import '../view_models/favorites_view_model.dart';
 import '../view_models/movie_detail_view_model.dart';
 import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
@@ -209,6 +211,29 @@ class AppRouter {
                         auth,
                       ),
                       child: const EditProfileScreen(),
+                    );
+                  },
+                ),
+                // 내 즐겨찾기 (최종 경로 /my/favorites) — 9주차
+                // 하단 탭 없이 위에 띄웁니다. 계정별 목록이라 ValueKey(email:세션 번호)로 만들어
+                // 계정이 바뀌면 이전 사용자의 ViewModel을 버리고 새로 만듭니다.
+                GoRoute(
+                  path: 'favorites',
+                  parentNavigatorKey: rootNavigatorKey,
+                  builder: (context, state) {
+                    final email = context.select<AuthViewModel, String?>(
+                      (auth) => auth.member?.email,
+                    );
+                    final guard = context.read<SessionGuard>();
+                    return ChangeNotifierProvider<FavoritesViewModel>(
+                      key: ValueKey('$email:${guard.generation}'),
+                      create: (context) => FavoritesViewModel(
+                        context.read<FavoriteApiService>(),
+                        context.read<TmdbMovieService>(),
+                        guard: guard,
+                        onSessionExpired: auth.expireSession,
+                      )..load(),
+                      child: const FavoritesScreen(),
                     );
                   },
                 ),

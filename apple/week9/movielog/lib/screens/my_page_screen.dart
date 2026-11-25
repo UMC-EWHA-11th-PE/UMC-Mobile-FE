@@ -20,7 +20,7 @@ import '../widgets/tag_chip.dart';
 /// - [_ProfileHeader] 프로필 사진, 닉네임, 이메일, 프로필 수정 버튼
 /// - [_ProfileStats] 본 영화·평점·즐겨찾기 통계
 /// - [_FavoriteGenres] 선호하는 장르
-/// - [_MyRatingsEntry] 내가 등록한 평점 화면으로 이동 (6주차)
+/// - [_EntryCard] 내가 등록한 평점(6주차)·내 즐겨찾기(9주차) 화면으로 이동
 class MyPageScreen extends StatelessWidget {
   const MyPageScreen({super.key});
 
@@ -50,7 +50,10 @@ class MyPageScreen extends StatelessWidget {
             _ProfileStats(),
             // W6-ENTRY — 통계 아래 26, 선호하는 장르 위 28
             SizedBox(height: 26),
-            _MyRatingsEntry(),
+            _EntryCard(title: '내가 등록한 평점', path: '/my/ratings'),
+            // W9 — 내가 등록한 평점 아래에 내 즐겨찾기 행
+            SizedBox(height: 8),
+            _EntryCard(title: '내 즐겨찾기', path: '/my/favorites'),
             SizedBox(height: 28),
             _FavoriteGenres(),
           ],
@@ -329,10 +332,13 @@ class _FavoriteGenres extends StatelessWidget {
   }
 }
 
-/// 내가 등록한 평점 진입 카드 — 358 x 64, 배경 #FFFFFF, 테두리 1.5px #D6C9E8 (W6-ENTRY)
-/// 누르면 하단 탭 없이 /my/ratings 화면을 위에 띄웁니다.
-class _MyRatingsEntry extends StatelessWidget {
-  const _MyRatingsEntry();
+/// 화면 진입 카드 — 358 x 64, 배경 #FFFFFF, 테두리 1.5px #D6C9E8 (W6-ENTRY)
+/// 누르면 하단 탭 없이 [path] 화면을 위에 띄웁니다. (/my/ratings, /my/favorites)
+class _EntryCard extends StatelessWidget {
+  const _EntryCard({required this.title, required this.path});
+
+  final String title;
+  final String path;
 
   @override
   Widget build(BuildContext context) {
@@ -346,7 +352,7 @@ class _MyRatingsEntry extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/my/ratings'),
+        onTap: () => context.push(path),
         child: SizedBox(
           height: 64,
           child: Padding(
@@ -354,9 +360,7 @@ class _MyRatingsEntry extends StatelessWidget {
             padding: const EdgeInsets.only(left: 19, right: 18),
             child: Row(
               children: [
-                const Expanded(
-                  child: Text('내가 등록한 평점', style: AppTheme.entryCardTitle),
-                ),
+                Expanded(child: Text(title, style: AppTheme.entryCardTitle)),
                 CustomPaint(
                   size: const Size(8, 14),
                   painter: _ChevronPainter(color: colors.primary),

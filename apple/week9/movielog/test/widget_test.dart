@@ -921,9 +921,18 @@ void main() {
         .first;
     expect(tester.getSize(entry), const Size(358, 64));
     expect(tester.getTopLeft(entry).dy - tester.getBottomLeft(statCard).dy, 26);
+    // W9 — 내 즐겨찾기 행은 내가 등록한 평점 아래 8, 같은 크기. 선호하는 장르는 그 아래 28
+    final favoritesEntry = find
+        .ancestor(of: find.text('내 즐겨찾기'), matching: find.byType(Material))
+        .first;
+    expect(tester.getSize(favoritesEntry), const Size(358, 64));
+    expect(
+      tester.getTopLeft(favoritesEntry).dy - tester.getBottomLeft(entry).dy,
+      8,
+    );
     expect(
       tester.getTopLeft(find.text('선호하는 장르')).dy -
-          tester.getBottomLeft(entry).dy,
+          tester.getBottomLeft(favoritesEntry).dy,
       28,
     );
     // 글자 왼쪽 19, 꺾쇠 8 x 14 오른쪽 18
