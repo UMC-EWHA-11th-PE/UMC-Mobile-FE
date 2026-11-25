@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import 'package:movielog/app/movie_log_app.dart';
 import 'package:movielog/core/session/session_guard.dart';
+import 'package:movielog/data/models/member_info.dart';
 import 'package:movielog/data/models/tmdb_movie_dto.dart';
 import 'package:movielog/data/services/tmdb_movie_service.dart';
 import 'package:movielog/screens/favorites_screen.dart';
@@ -361,5 +362,46 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(FavoritesScreen), findsOneWidget);
     expect(find.text('별빛 아래 우리'), findsOneWidget);
+  });
+
+  testWidgets('다른 계정으로 로그인하면 이전 계정의 즐겨찾기 목록이 보이지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(390, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final memberApi = FakeMemberApiService();
+    final auth = await signedInAuth(memberApi: memberApi);
+    final favorites = FakeFavoriteServer(movieIds: [1]);
+    await tester.pumpWidget(
+      MovieLogApp(
+        favoriteApiService: favorites.service,
+        authViewModel: auth,
+        tmdbMovieService: fakeTmdbService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    appRouter(tester).go('/my');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('내 즐겨찾기'));
+    await tester.pumpAndSettle();
+    expect(find.text('별빛 아래 우리'), findsOneWidget);
+
+    // 로그아웃 → 다른 계정(즐겨찾기 없음)으로 로그인
+    await auth.logout();
+    await tester.pumpAndSettle();
+    favorites.movieIds.clear(); // 서버는 JWT 기준으로 새 계정의 목록을 돌려줌
+    memberApi.member = MemberInfo(
+      email: 'other@example.com',
+      nickname: '다른 계정',
+      createdAt: DateTime.utc(2026, 9, 6),
+    );
+    await auth.login('other@example.com', 'password1!');
+    await tester.pumpAndSettle();
+    appRouter(tester).go('/my');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('내 즐겨찾기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('별빛 아래 우리'), findsNothing);
+    expect(find.text('아직 즐겨찾기한 영화가 없습니다.'), findsOneWidget);
   });
 }
