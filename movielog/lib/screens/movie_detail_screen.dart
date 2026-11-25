@@ -6,8 +6,10 @@ import 'package:provider/provider.dart';
 import '../data/models/rating_dto.dart';
 import '../data/models/tmdb_movie_dto.dart';
 import '../theme/app_colors.dart';
+import '../view_models/favorite_detail_view_model.dart';
 import '../view_models/session_ratings_view_model.dart';
 import '../widgets/delete_rating_dialog.dart';
+import '../widgets/favorite_button.dart';
 import '../widgets/rating_dialog.dart';
 import '../widgets/tmdb_poster_image.dart';
 
@@ -22,18 +24,14 @@ class MovieDetailScreen extends StatefulWidget {
 }
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
-  bool isFavorite = false;
-
   TmdbMovieDto get movie => widget.movie;
 
-  void toggleFavorite() {
-    setState(() => isFavorite = !isFavorite);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(isFavorite ? '즐겨찾기에 추가했습니다.' : '즐겨찾기에서 삭제했습니다.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<FavoriteDetailViewModel>().load();
+    });
   }
 
   void _showSnackBar(String text) {
@@ -100,7 +98,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       (vm) => vm.ratingFor(movie.id),
     );
     final date = movie.releaseDate;
-    final year = (date != null && date.length >= 4) ? date.substring(0, 4) : null;
+    final year = (date != null && date.length >= 4)
+        ? date.substring(0, 4)
+        : null;
     final score = movie.voteAverage / 2; // TMDB 10점 → 5점 별
 
     return Scaffold(
@@ -113,7 +113,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         ),
         title: const Text(
           'Cinema Archive',
-          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.violet),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.violet,
+          ),
         ),
       ),
       body: ListView(
@@ -131,17 +134,33 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  movie.title,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            movie.title,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (year != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              year,
+                              style: const TextStyle(color: AppColors.darkGray),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const FavoriteButton(),
+                  ],
                 ),
-                if (year != null) ...[
-                  const SizedBox(height: 4),
-                  Text(year, style: const TextStyle(color: AppColors.darkGray)),
-                ],
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -188,16 +207,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: toggleFavorite,
-                  icon: Icon(
-                    isFavorite ? Icons.bookmark : Icons.bookmark_border,
-                  ),
-                  label: const Text('즐겨찾기'),
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: myRating == null

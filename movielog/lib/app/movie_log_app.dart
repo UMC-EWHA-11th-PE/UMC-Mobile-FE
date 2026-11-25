@@ -9,6 +9,7 @@ import '../core/session/auth_session_bridge.dart';
 import '../core/session/session_guard.dart';
 import '../core/storage/token_storage.dart';
 import '../data/services/auth_api_service.dart';
+import '../data/services/favorite_api_service.dart';
 import '../data/services/member_api_service.dart';
 import '../data/services/rating_api_service.dart';
 import '../data/services/tmdb_movie_service.dart';
@@ -52,6 +53,9 @@ class _MovieLogAppState extends State<MovieLogApp> {
         // 조회는 공개, 등록·수정·삭제는 보호 Client
         Provider<RatingApiService>(
           create: (_) => RatingApiService(_publicClient, _authClient),
+        ),
+        Provider<FavoriteApiService>(
+          create: (_) => FavoriteApiService(_authClient),
         ),
         ChangeNotifierProvider<AuthViewModel>(
           create: (context) => AuthViewModel(
