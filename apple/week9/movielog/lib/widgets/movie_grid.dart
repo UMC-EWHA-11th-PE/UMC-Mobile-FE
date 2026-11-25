@@ -6,11 +6,15 @@ import 'poster_badge.dart';
 import 'tmdb_poster_image.dart';
 
 /// 영화 그리드 — 2열, column-gap 16, row-gap 24
+///
+/// 9주차 — 그리드 아래에 [footer](더 보기·로딩·오류·끝)를 함께 스크롤하도록
+/// GridView 대신 CustomScrollView(SliverGrid + footer)로 그립니다.
 class MovieGrid extends StatelessWidget {
   const MovieGrid({
     super.key,
     required this.movies,
     this.genreNames = const {},
+    this.footer,
   });
 
   final List<TmdbMovieDto> movies;
@@ -18,27 +22,40 @@ class MovieGrid extends StatelessWidget {
   /// TMDB 장르 id → 이름 (소제목에 첫 번째 장르 이름을 표시)
   final Map<int, String> genreNames;
 
+  /// 그리드 아래에 붙는 위젯 — null이면 없음
+  final Widget? footer;
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         // 카드 너비 171 기준: 포스터 2:3(256.5) + 12 + 제목 24 + 소제목 24
         final itemWidth = (constraints.maxWidth - 16 * 2 - 16) / 2;
-        return GridView.builder(
+        final footer = this.footer;
+        return CustomScrollView(
           // 영화가 적어 화면을 다 채우지 않아도 당겨서 새로고침할 수 있도록 항상 스크롤 가능하게 둡니다.
           physics: const AlwaysScrollableScrollPhysics(),
-          // Figma padding-bottom 96 = 하단 네비(80) + 여백 16.
-          // 네비가 본문을 덮지 않으므로 16만 둡니다.
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 24,
-            mainAxisExtent: itemWidth * 1.5 + 12 + 24 + 24,
-          ),
-          itemCount: movies.length,
-          itemBuilder: (context, index) =>
-              _MovieGridItem(movie: movies[index], genreNames: genreNames),
+          slivers: [
+            // Figma padding-bottom 96 = 하단 네비(80) + 여백 16.
+            // 네비가 본문을 덮지 않으므로 16만 둡니다.
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, footer == null ? 16 : 0),
+              sliver: SliverGrid.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 24,
+                  mainAxisExtent: itemWidth * 1.5 + 12 + 24 + 24,
+                ),
+                itemCount: movies.length,
+                itemBuilder: (context, index) => _MovieGridItem(
+                  movie: movies[index],
+                  genreNames: genreNames,
+                ),
+              ),
+            ),
+            if (footer != null) SliverToBoxAdapter(child: footer),
+          ],
         );
       },
     );

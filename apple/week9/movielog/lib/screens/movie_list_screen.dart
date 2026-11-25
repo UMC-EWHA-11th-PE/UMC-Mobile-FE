@@ -3,21 +3,24 @@ import 'package:provider/provider.dart';
 
 import '../data/models/tmdb_genre_dto.dart';
 import '../theme/app_shadows.dart';
-import '../view_models/movie_list_view_model.dart';
+import '../view_models/paged_movies_view_model.dart';
 import '../widgets/app_header.dart';
 import '../widgets/movie_grid.dart';
 import '../widgets/movie_list_states.dart';
+import '../widgets/movie_page_footer.dart';
 import '../widgets/movie_retry_dialog.dart';
 
 /// W3-02 영화 목록 화면입니다.
 ///
-/// 5주차부터 [MovieListViewModel]의 상태를 [Consumer]로 구독해 그대로 그립니다.
+/// 5주차부터 ViewModel의 상태를 [Consumer]로 구독해 그대로 그립니다.
+/// 9주차 — [PagedMoviesViewModel]로 바꿔 첫 page만 보여주고, 그리드 아래 [MoviePageFooter]로
+/// 다음 page를 이어 붙입니다. (더 보기 · 추가 로딩 · 다음 페이지 오류 · 마지막 페이지)
 /// 화면은 API를 직접 부르지 않고, 장르 선택·다시 시도만 ViewModel에 전달합니다.
 /// - 불러오는 중: [MovieListLoading] (장르 칩은 누를 수 없음)
 /// - 성공 목록은 당겨서 새로고침([RefreshIndicator]) — 새로고침 중에도 기존 목록 유지
 /// - 실패: [MovieListError] (다시 시도)
 /// - 빈 목록: [MovieListEmpty]
-/// - 성공: [MovieGrid] — TMDB Discover 최대 30개
+/// - 성공: [MovieGrid] — TMDB Discover page 단위 + 더 보기
 ///
 /// 장르를 바꾸다 실패했는데 보여주던 목록이 있으면, 목록을 유지한 채 [MovieRetryDialog]를 띄웁니다.
 class MovieListScreen extends StatefulWidget {
@@ -28,14 +31,14 @@ class MovieListScreen extends StatefulWidget {
 }
 
 class _MovieListScreenState extends State<MovieListScreen> {
-  MovieListViewModel? _viewModel;
+  PagedMoviesViewModel? _viewModel;
   bool _retryDialogOpen = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Dialog는 화면을 다시 그리는 일이 아니라 한 번 띄우는 일이라 build 대신 listener에서 처리합니다.
-    final viewModel = context.read<MovieListViewModel>();
+    final viewModel = context.read<PagedMoviesViewModel>();
     if (viewModel != _viewModel) {
       _viewModel?.removeListener(_showRetryDialogIfNeeded);
       _viewModel = viewModel..addListener(_showRetryDialogIfNeeded);
@@ -76,25 +79,30 @@ class _MovieListScreenState extends State<MovieListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const AppHeader.tab(title: '영화'),
-      body: Consumer<MovieListViewModel>(
+      body: Consumer<PagedMoviesViewModel>(
         builder: (context, viewModel, child) {
-          final content = switch (viewModel.status) {
-            MovieListLoadStatus.idle ||
-            MovieListLoadStatus.loading => const MovieListLoading(),
-            MovieListLoadStatus.error => MovieListError(
+          final content = switch (viewModel.phase) {
+            LoadPhase.idle || LoadPhase.loading => const MovieListLoading(),
+            LoadPhase.error => MovieListError(
               message: viewModel.message,
-              onRetry: () => context.read<MovieListViewModel>().loadInitial(),
+              onRetry: () => context.read<PagedMoviesViewModel>().retry(),
             ),
-            MovieListLoadStatus.empty => const MovieListEmpty(),
+            LoadPhase.empty => const MovieListEmpty(),
             // Pull to Refresh — Flutter 기본 RefreshIndicator
-            MovieListLoadStatus.success => RefreshIndicator(
-              onRefresh: () => context.read<MovieListViewModel>().refresh(),
+            LoadPhase.ready => RefreshIndicator(
+              onRefresh: () => context.read<PagedMoviesViewModel>().refresh(),
               // 목록 전체를 불러오는 중에는 당겨도 새로고침하지 않습니다.
               notificationPredicate: (notification) =>
                   !viewModel.isLoading && notification.depth == 0,
               child: MovieGrid(
                 movies: viewModel.movies,
                 genreNames: viewModel.genreNames,
+                footer: MoviePageFooter(
+                  hasMore: viewModel.hasMore,
+                  isLoadingMore: viewModel.isLoadingMore,
+                  failed: viewModel.loadMoreFailed,
+                  onLoadMore: viewModel.loadMore,
+                ),
               ),
             ),
           };
@@ -113,7 +121,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
                   selectedGenreId: viewModel.selectedGenreId,
                   enabled: !viewModel.isRequesting,
                   onSelected: (genreId) =>
-                      context.read<MovieListViewModel>().selectGenre(genreId),
+                      context.read<PagedMoviesViewModel>().selectGenre(genreId),
                 ),
               ),
               Expanded(child: content),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'svg_icon_button.dart';
 
@@ -97,7 +98,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// 탭 헤더 검색 버튼 — 34 x 34, padding 8, 아이콘 18 x 18 #4F378A
+/// 탭 헤더 검색 버튼 — 누르면 /search, 34 x 34, padding 8, 아이콘 18 x 18 #4F378A
 class HeaderSearchButton extends StatelessWidget {
   const HeaderSearchButton({super.key});
 
@@ -108,7 +109,8 @@ class HeaderSearchButton extends StatelessWidget {
       iconSize: const Size(18, 18),
       color: Theme.of(context).colorScheme.onPrimaryContainer,
       tooltip: '검색',
-      onPressed: () {}, // 검색 화면은 아직 연결하지 않습니다.
+      // 9주차 — 영화 검색 화면(하단 탭 없음)을 위에 띄웁니다.
+      onPressed: () => context.push('/search'),
     );
   }
 }

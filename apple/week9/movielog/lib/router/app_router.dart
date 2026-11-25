@@ -16,6 +16,7 @@ import '../screens/home_screen.dart';
 import '../screens/main_screen.dart';
 import '../screens/movie_detail_screen.dart';
 import '../screens/movie_list_screen.dart';
+import '../screens/movie_search_screen.dart';
 import '../screens/my_page_screen.dart';
 import '../screens/my_ratings_screen.dart';
 import '../screens/login_screen.dart';
@@ -28,7 +29,7 @@ import '../view_models/favorite_detail_view_model.dart';
 import '../view_models/favorites_view_model.dart';
 import '../view_models/movie_detail_view_model.dart';
 import '../view_models/movie_home_view_model.dart';
-import '../view_models/movie_list_view_model.dart';
+import '../view_models/paged_movies_view_model.dart';
 import '../view_models/learning_member_session.dart';
 import '../view_models/my_ratings_view_model.dart';
 import '../view_models/session_rating_store.dart';
@@ -147,6 +148,17 @@ class AppRouter {
             );
           },
         ),
+        // 영화 검색 — 하단 탭 없이 전체 화면 (9주차)
+        // /movies/:movieId와 겹치지 않도록 최상위 /search로 둡니다.
+        GoRoute(
+          path: '/search',
+          builder: (context, state) =>
+              ChangeNotifierProvider<PagedMoviesViewModel>(
+                create: (context) =>
+                    PagedMoviesViewModel(context.read<TmdbMovieService>()),
+                child: const MovieSearchScreen(),
+              ),
+        ),
         // 하단 탭(홈/영화/마이)을 공유하는 화면들
         ShellRoute(
           builder: (context, state, child) {
@@ -170,9 +182,10 @@ class AppRouter {
             GoRoute(
               path: '/movies',
               builder: (context, state) =>
-                  ChangeNotifierProvider<MovieListViewModel>(
+                  // 9주차 — 30개 수집 대신 page 단위 "더 보기"
+                  ChangeNotifierProvider<PagedMoviesViewModel>(
                     create: (context) =>
-                        MovieListViewModel(context.read<TmdbMovieService>())
+                        PagedMoviesViewModel(context.read<TmdbMovieService>())
                           ..loadInitial(),
                     child: const MovieListScreen(),
                   ),

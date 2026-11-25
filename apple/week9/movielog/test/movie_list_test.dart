@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
@@ -11,19 +12,23 @@ import 'package:shared_preferences_platform_interface/shared_preferences_async_p
 import 'package:movielog/data/local/genre_preference.dart';
 import 'package:movielog/data/local/secure_storage_cleanup.dart';
 import 'package:movielog/data/services/fake_movie_service.dart';
+import 'package:dio/dio.dart';
+import 'package:movielog/data/models/tmdb_genre_dto.dart';
+import 'package:movielog/data/models/tmdb_movie_page.dart';
 import 'package:movielog/data/services/tmdb_movie_service.dart';
 import 'package:movielog/screens/movie_list_screen.dart';
 import 'package:movielog/theme/app_theme.dart';
-import 'package:movielog/view_models/movie_list_view_model.dart';
+import 'package:movielog/widgets/movie_page_footer.dart';
+import 'package:movielog/view_models/paged_movies_view_model.dart';
 
 import 'fake_tmdb.dart';
 
 /// 라우터와 같은 방식으로 화면마다 ViewModel을 만들어 붙입니다.
 Widget _app(TmdbMovieService service, {Key? key}) => MaterialApp(
   theme: AppTheme.light,
-  home: ChangeNotifierProvider<MovieListViewModel>(
+  home: ChangeNotifierProvider<PagedMoviesViewModel>(
     key: key,
-    create: (_) => MovieListViewModel(service)..loadInitial(),
+    create: (_) => PagedMoviesViewModel(service)..loadInitial(),
     child: const MovieListScreen(),
   ),
 );
@@ -187,7 +192,11 @@ void main() {
 
   group('Pull to Refresh', () {
     Future<void> pullToRefresh(WidgetTester tester) async {
-      await tester.fling(find.byType(GridView), const Offset(0, 400), 1000);
+      await tester.fling(
+        find.byType(CustomScrollView),
+        const Offset(0, 400),
+        1000,
+      );
       // 새로고침이 시작될 만큼만 진행
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
@@ -263,7 +272,9 @@ void main() {
 
     test('목록 전체를 불러오는 중에는 새로고침하지 않는다', () async {
       final requests = <Uri>[];
-      final viewModel = MovieListViewModel(fakeTmdbService(requests: requests));
+      final viewModel = PagedMoviesViewModel(
+        fakeTmdbService(requests: requests),
+      );
 
       final loading = viewModel.loadInitial();
       await viewModel.refresh();
@@ -377,48 +388,179 @@ void main() {
     });
   });
 
-  group('최대 30개', () {
+  group('더 보기 (page 단위)', () {
     List<Map<String, Object?>> manyMovies(int count) => [
       for (var id = 1; id <= count; id++)
         {'id': id, 'title': '영화 $id', 'genre_ids': <int>[]},
     ];
 
-    test('30개가 차면 다음 페이지를 요청하지 않는다', () async {
+    List<String?> pages(List<Uri> requests) => [
+      for (final uri in requests)
+        if (uri.path.endsWith('/discover/movie')) uri.queryParameters['page'],
+    ];
+
+    test('첫 page만 요청하고, 더 보기마다 다음 page를 이어 붙인다', () async {
       final requests = <Uri>[];
-      final viewModel = MovieListViewModel(
+      final viewModel = PagedMoviesViewModel(
         fakeTmdbService(results: manyMovies(45), requests: requests),
       );
 
-      final result = await viewModel.fetchUpToThirtyMovies();
+      await viewModel.loadInitial();
+      expect(viewModel.movies, hasLength(20));
+      expect(viewModel.hasMore, isTrue);
 
-      expect(result.map((movie) => movie.id), [
-        for (var i = 1; i <= 30; i++) i,
+      await viewModel.loadMore();
+      await viewModel.loadMore();
+      expect(viewModel.movies.map((m) => m.id), [
+        for (var i = 1; i <= 45; i++) i,
       ]);
-      expect(
-        [for (final uri in requests) uri.queryParameters['page']],
-        ['1', '2'],
-      );
+      expect(viewModel.hasMore, isFalse);
+
+      // 마지막 page 뒤에는 더 요청하지 않음
+      await viewModel.loadMore();
+      expect(pages(requests), ['1', '2', '3']);
     });
 
-    test('페이지 사이에 중복된 영화는 하나만 남긴다', () async {
+    test('page 사이에 중복된 영화는 하나만 남긴다', () async {
       // 1페이지 1~20, 2페이지 15~34 (15~20 중복)
       final overlapped = [...manyMovies(20), ...manyMovies(34).skip(14)];
-      final viewModel = MovieListViewModel(
+      final viewModel = PagedMoviesViewModel(
         fakeTmdbService(results: overlapped),
       );
+      await viewModel.loadInitial();
+      await viewModel.loadMore();
 
-      final result = await viewModel.fetchUpToThirtyMovies();
-
-      expect(result.map((movie) => movie.id).toSet().length, result.length);
-      expect(result.length, 30);
+      final ids = viewModel.movies.map((m) => m.id).toList();
+      expect(ids.toSet().length, ids.length);
+      expect(ids, hasLength(34));
     });
 
-    test('결과가 30개보다 적으면 있는 만큼만 돌려준다', () async {
-      final viewModel = MovieListViewModel(
-        fakeTmdbService(results: manyMovies(12)),
+    test('다음 page 실패는 목록을 유지하고, 다시 시도하면 같은 page를 요청한다', () async {
+      final requests = <Uri>[];
+      var failing = false;
+      final viewModel = PagedMoviesViewModel(
+        fakeTmdbService(
+          results: manyMovies(30),
+          requests: requests,
+          fail: () => failing,
+        ),
       );
+      await viewModel.loadInitial();
 
-      expect(await viewModel.fetchUpToThirtyMovies(), hasLength(12));
+      failing = true;
+      await viewModel.loadMore();
+      expect(viewModel.loadMoreFailed, isTrue);
+      expect(viewModel.phase, LoadPhase.ready);
+      expect(viewModel.movies, hasLength(20));
+
+      failing = false;
+      await viewModel.loadMore();
+      expect(viewModel.loadMoreFailed, isFalse);
+      expect(viewModel.movies, hasLength(30));
+      expect(pages(requests), ['1', '2', '2']);
+    });
+
+    test('장르를 바꾸면 이전 장르의 늦은 다음 page 응답은 버린다 (generation)', () async {
+      final requests = <Uri>[];
+      final gate = Completer<void>();
+      var holdPage2 = false;
+      final base = fakeTmdbService(
+        results: [
+          ...manyMovies(30),
+          {
+            'id': 900,
+            'title': 'SF 영화',
+            'genre_ids': [878],
+          },
+        ],
+        requests: requests,
+      );
+      final viewModel = PagedMoviesViewModel(
+        _GatedService(base, () async {
+          if (holdPage2) await gate.future;
+        }),
+      );
+      await viewModel.loadInitial();
+
+      holdPage2 = true;
+      final loadingMore = viewModel.loadMore(); // 전체 2page — 응답 지연
+      holdPage2 = false;
+      await viewModel.selectGenre(878); // 새 조건
+      gate.complete();
+      await loadingMore;
+
+      expect(viewModel.movies.map((m) => m.title), ['SF 영화']);
+      expect(viewModel.isLoadingMore, isFalse);
+      expect(viewModel.hasMore, isFalse);
+    });
+  });
+
+  group('더 보기 Footer', () {
+    List<Map<String, Object?>> manyMovies(int count) => [
+      for (var id = 1; id <= count; id++)
+        {'id': id, 'title': '영화 $id', 'genre_ids': <int>[]},
+    ];
+
+    Future<void> scrollToFooter(WidgetTester tester) async {
+      await tester.scrollUntilVisible(
+        find.byType(MoviePageFooter),
+        500,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.ensureVisible(find.byType(MoviePageFooter));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('더 보기 → 추가 로딩 → 마지막 페이지 안내', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          fakeTmdbService(
+            results: manyMovies(25),
+            delay: const Duration(milliseconds: 100),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await scrollToFooter(tester);
+      expect(find.text('더 보기'), findsOneWidget);
+
+      await tester.tap(find.text('더 보기'));
+      await tester.pump();
+      // 추가 로딩 중: 버튼 자리에 로딩, 기존 목록 유지
+      expect(
+        find.descendant(
+          of: find.byType(MoviePageFooter),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('영화 20', skipOffstage: false), findsOneWidget);
+
+      await tester.pumpAndSettle();
+      await scrollToFooter(tester);
+      expect(find.text('모든 영화를 확인했습니다.'), findsOneWidget);
+      expect(find.text('더 보기'), findsNothing);
+    });
+
+    testWidgets('다음 페이지 오류 → 안내와 다음 페이지 다시 시도', (tester) async {
+      var failing = false;
+      await tester.pumpWidget(
+        _app(fakeTmdbService(results: manyMovies(25), fail: () => failing)),
+      );
+      await tester.pumpAndSettle();
+      await scrollToFooter(tester);
+
+      failing = true;
+      await tester.tap(find.text('더 보기'));
+      await tester.pumpAndSettle();
+      expect(find.text('추가 영화 조회에 실패했습니다.'), findsOneWidget);
+      expect(find.byType(Dialog), findsNothing); // 다음 page 실패는 Dialog가 아님
+
+      failing = false;
+      await tester.tap(find.text('다음 페이지 다시 시도'));
+      await tester.pumpAndSettle();
+      await scrollToFooter(tester);
+      expect(find.text('모든 영화를 확인했습니다.'), findsOneWidget);
     });
   });
 
@@ -471,4 +613,24 @@ void main() {
       expect(await secureStorage.read(key: 'access_token'), 'new');
     });
   });
+}
+
+/// discoverMovies의 2page 이후 요청을 [hold]가 끝날 때까지 늦추는 Service — 늦은 응답 확인용
+class _GatedService extends TmdbMovieService {
+  _GatedService(this._inner, this._hold) : super(Dio());
+
+  final TmdbMovieService _inner;
+  final Future<void> Function() _hold;
+
+  @override
+  Future<TmdbMoviePageDto> discoverMovies({
+    required int page,
+    int? genreId,
+  }) async {
+    if (page > 1) await _hold();
+    return _inner.discoverMovies(page: page, genreId: genreId);
+  }
+
+  @override
+  Future<List<TmdbGenreDto>> fetchGenres() => _inner.fetchGenres();
 }

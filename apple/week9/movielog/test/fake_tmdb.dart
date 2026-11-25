@@ -44,6 +44,7 @@ final fakeTmdbPopularMovies = _toTmdbJson(popularMovies);
 ///
 /// - /genre/movie/list → [fakeTmdbGenres]
 /// - /discover/movie → [results]를 with_genres로 거른 뒤 20개씩 페이지로 나눔
+/// - /search/movie → [results] 중 제목에 query가 들어간 영화를 20개씩 페이지로 나눔
 /// - /movie/popular → [popularResults]를 20개씩 페이지로 나눔
 /// - /movie/{id} → 같은 id의 Mock 상세(없는 id면 404)
 /// - [resultsBuilder]가 있으면 요청할 때마다 Discover 결과를 새로 받음 (새로고침 확인용)
@@ -149,11 +150,17 @@ Map<String, Object?> _respond(
   const pageSize = 20;
   final genreId = options.queryParameters['with_genres'] as int?;
   final page = options.queryParameters['page'] as int? ?? 1;
-  final filtered = genreId == null
-      ? all
-      : all
-            .where((movie) => (movie['genre_ids'] as List).contains(genreId))
-            .toList();
+  final query = options.queryParameters['query'] as String?;
+  final filtered = all.where((movie) {
+    if (genreId != null && !(movie['genre_ids'] as List).contains(genreId)) {
+      return false;
+    }
+    // /search/movie — 제목에 검색어가 들어간 영화만
+    if (options.path == '/search/movie' && query != null) {
+      return (movie['title'] as String).contains(query);
+    }
+    return true;
+  }).toList();
   final totalPages = (filtered.length / pageSize).ceil().clamp(1, 500);
 
   return {
