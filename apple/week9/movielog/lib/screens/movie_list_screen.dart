@@ -84,8 +84,11 @@ class _MovieListScreenState extends State<MovieListScreen> {
           final content = switch (viewModel.phase) {
             LoadPhase.idle || LoadPhase.loading => const MovieListLoading(),
             LoadPhase.error => MovieListError(
-              message: viewModel.message,
-              onRetry: () => context.read<PagedMoviesViewModel>().retry(),
+              message: viewModel.errorMessage,
+              // 장르 목록부터 못 불러왔으면 처음부터, 아니면 선택한 장르의 첫 page를 다시 요청합니다.
+              onRetry: () => viewModel.genres.isEmpty
+                  ? viewModel.start()
+                  : viewModel.loadInitial(genreId: viewModel.selectedGenreId),
             ),
             LoadPhase.empty => const MovieListEmpty(),
             // Pull to Refresh — Flutter 기본 RefreshIndicator
@@ -97,12 +100,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
               child: MovieGrid(
                 movies: viewModel.movies,
                 genreNames: viewModel.genreNames,
-                footer: MoviePageFooter(
-                  hasMore: viewModel.hasMore,
-                  isLoadingMore: viewModel.isLoadingMore,
-                  failed: viewModel.loadMoreFailed,
-                  onLoadMore: viewModel.loadMore,
-                ),
+                footer: MoviePageFooter(vm: viewModel),
               ),
             ),
           };

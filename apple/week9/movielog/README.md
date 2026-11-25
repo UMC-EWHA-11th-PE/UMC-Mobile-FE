@@ -6,6 +6,9 @@
 
 ### 즐겨찾기 (`/v8/favorites`, 모두 JWT 보호 요청)
 
+영화 상세의 제목·정보 텍스트 오른쪽에 북마크 버튼을 두고(3주차 하단 mock 버튼 제거), 화면 initState에서 여부를 한 번 조회합니다.
+등록·해제 중에는 북마크 자리에만 로딩이 보이고, 서버 성공을 확인한 뒤에만 아이콘을 바꿉니다(optimistic update 없음). 결과는 Snackbar로 안내합니다.
+
 | 목적 | 요청 | 성공 |
 | --- | --- | --- |
 | 등록 | `POST /v8/favorites` `{ "movieId": 550 }` | 201, result = `{ favoriteId, movieId, createdAt }` |
@@ -30,6 +33,7 @@
 - `AuthSessionBridge`가 `AuthViewModel`의 `sessionVersion`과 `/members/me`로 확인한 email을 `SessionGuard`에 전달합니다.
   같은 email로 다시 로그인해도 새 세션입니다.
 - 상세 즐겨찾기·내 즐겨찾기 ViewModel은 `ValueKey('email:generation')`으로 만들어, 계정이 바뀌면 새로 만듭니다.
+  내 정보(`member`)가 준비되고 SessionGuard와 일치하기 전에는 만들지 않고 로딩(실패 시 "내 정보 다시 조회")을 보여 줍니다.
 - `SafeNotify` mixin으로 화면이 사라진 뒤에는 `notifyListeners()`를 부르지 않습니다.
 
 ### 영화 목록 "더 보기"와 검색
@@ -39,7 +43,10 @@
   홈의 인기 영화 5개는 그대로입니다.
 - 장르·검색어가 바뀌면 요청 generation을 올려 이전 조건의 늦은 응답을 버립니다.
 - 5주차 동작(장르 저장, Pull to Refresh, 장르 변경 실패 시 재시도 Dialog)은 유지합니다.
-- 탭 헤더의 검색 버튼은 `/search`(TMDB `/search/movie`) 화면을 하단 탭 없이 엽니다.
+- TMDB page는 1~500까지라 `total_pages`가 더 커도 501은 요청하지 않습니다. 다음 page 실패는 `nextPage`를 그대로 둬 같은 page를 다시 요청합니다.
+- 탭 헤더의 검색 버튼은 `/movies/search`(TMDB `/search/movie`) 화면을 하단 탭 없이 엽니다.
+  정적인 `/movies/search`를 동적인 `/movies/:movieId`보다 먼저 등록해 `search`가 영화 ID로 해석되지 않게 합니다.
+  빈 검색어는 보내지 않고, 처음 진입(idle)과 결과 없음(empty)을 구분합니다.
 
 ## 내 평점 목록: 현재 계약의 한계 (8주차부터)
 

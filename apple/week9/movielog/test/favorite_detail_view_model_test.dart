@@ -12,13 +12,15 @@ const _email = 'mingo@example.com';
 FavoriteDetailViewModel _viewModel(
   FakeFavoriteServer server, {
   SessionGuard? guard,
-  int? movieId = 550,
+  int movieId = 550,
+  String accountId = _email,
   List<bool>? expired,
 }) {
   return FavoriteDetailViewModel(
-    server.service,
     movieId: movieId,
-    guard: guard ?? (SessionGuard()..startSession(_email)),
+    favoriteApi: server.service,
+    sessionGuard: guard ?? (SessionGuard()..startSession(_email)),
+    accountId: accountId,
     onSessionExpired: () async => expired?.add(true),
   );
 }
@@ -28,9 +30,12 @@ void main() {
     final server = FakeFavoriteServer(movieIds: [550]);
     final viewModel = _viewModel(server);
 
+    expect(viewModel.hasLoadedStatus, isFalse);
     await viewModel.load();
 
     expect(viewModel.isFavorite, isTrue);
+    expect(viewModel.hasLoadedStatus, isTrue);
+    expect(viewModel.isLoading, isFalse);
     expect(server.calls, ['GET /v8/favorites/550']);
   });
 
@@ -43,7 +48,7 @@ void main() {
     server.gate = gate.future;
     final adding = viewModel.toggle();
     // 요청 중: 로딩, 아직 이전 상태
-    expect(viewModel.isSubmitting, isTrue);
+    expect(viewModel.isSaving, isTrue);
     expect(viewModel.isFavorite, isFalse);
     gate.complete();
     server.gate = null;
@@ -200,30 +205,46 @@ void main() {
     gate.complete();
     await loading;
 
-    expect(viewModel.isFavorite, isNull);
+    expect(viewModel.hasLoadedStatus, isFalse);
   });
 
   test('검증된 계정(email)이 없으면 요청하지 않는다', () async {
     final server = FakeFavoriteServer();
-    final viewModel = _viewModel(server, guard: SessionGuard());
+    // SessionGuard의 계정과 다른 계정으로 만든 ViewModel
+    final viewModel = _viewModel(server, accountId: 'other@example.com');
 
     await viewModel.load();
     await viewModel.toggle();
 
-    expect(viewModel.canRequest, isFalse);
+    expect(viewModel.hasLoadedStatus, isFalse);
     expect(server.calls, isEmpty);
   });
 
-  test('첫 조회에 실패하면 버튼을 눌렀을 때 여부 확인부터 다시 한다', () async {
+  test('첫 조회에 실패하면 여부를 확인하기 전까지 등록·해제하지 않고, load로 다시 확인한다', () async {
     final server = FakeFavoriteServer(movieIds: [550])..failMethods.add('GET');
     final viewModel = _viewModel(server);
     await viewModel.load();
-    expect(viewModel.isFavorite, isNull);
-    expect(viewModel.errorMessage, isNotNull);
+    expect(viewModel.hasLoadedStatus, isFalse);
+    expect(viewModel.errorMessage, '즐겨찾기 여부를 확인하지 못했습니다.');
 
     server.failMethods.clear();
     expect(await viewModel.toggle(), isNull);
-    expect(viewModel.isFavorite, isTrue);
     expect(server.calls.where((c) => c.startsWith('POST')), isEmpty);
+
+    await viewModel.load(); // 새로고침 버튼
+    expect(viewModel.isFavorite, isTrue);
+    expect(viewModel.errorMessage, isNull);
+  });
+
+  test('409 뒤 여부 재조회도 실패하면 이전 상태를 유지하고 안내한다', () async {
+    final server = FakeFavoriteServer();
+    final viewModel = _viewModel(server);
+    await viewModel.load();
+    server.movieIds.add(550);
+    server.failMethods.add('GET');
+
+    expect(await viewModel.toggle(), isNull);
+    expect(viewModel.isFavorite, isFalse);
+    expect(viewModel.errorMessage, '서버 상태를 다시 확인하지 못했습니다.');
   });
 }

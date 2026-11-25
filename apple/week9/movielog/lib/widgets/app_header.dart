@@ -98,7 +98,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// 탭 헤더 검색 버튼 — 누르면 /search, 34 x 34, padding 8, 아이콘 18 x 18 #4F378A
+/// 탭 헤더 검색 버튼 — 누르면 /movies/search, 34 x 34, padding 8, 아이콘 18 x 18 #4F378A
 class HeaderSearchButton extends StatelessWidget {
   const HeaderSearchButton({super.key});
 
@@ -110,7 +110,7 @@ class HeaderSearchButton extends StatelessWidget {
       color: Theme.of(context).colorScheme.onPrimaryContainer,
       tooltip: '검색',
       // 9주차 — 영화 검색 화면(하단 탭 없음)을 위에 띄웁니다.
-      onPressed: () => context.push('/search'),
+      onPressed: () => context.push('/movies/search'),
     );
   }
 }

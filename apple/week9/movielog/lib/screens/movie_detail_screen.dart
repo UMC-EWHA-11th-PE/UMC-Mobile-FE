@@ -26,17 +26,19 @@ import '../view_models/movie_detail_view_model.dart';
 /// 화면은 의미 단위로 나뉩니다.
 /// - [_DetailHeader] 뒤로가기, Cinema Archive, 공유
 /// - [_HeroPoster] 2:3 히어로 이미지
-/// - [_InfoSection] 제목, 연도·장르·러닝타임, 별점, 장르 칩
+/// - [_InfoSection] 제목, 연도·장르·러닝타임(오른쪽 즐겨찾기 버튼), 별점, 장르 칩
 /// - [_SynopsisSection] 시놉시스
-/// - [_ActionBar] 하단 고정 즐겨찾기·평점 남기기 버튼
+/// - [_ActionBar] 하단 고정 평점 남기기 버튼 (+ 즐겨찾기 실패 안내)
 ///
 /// 7주차 — 평점 남기기가 [RatingDialog]를 열고, Dialog 안에서
 /// [MovieDetailViewModel.createRating]으로 POST /v8/ratings(JWT)를 보냅니다.
 /// 저장이 끝나 Dialog가 true를 돌려준 뒤에만 성공 Snackbar를 띄웁니다.
 /// 이 화면은 로그인해야 열리므로 7주차의 학습용 회원가입 안내는 없앴습니다.
 ///
-/// 9주차 — 즐겨찾기 버튼을 [FavoriteDetailViewModel]에 연결합니다. (POST·DELETE /v8/favorites)
-/// 요청 중에는 버튼에 로딩을, 실패하면 이전 버튼 상태를 유지한 채 하단에 안내를 보여줍니다.
+/// 9주차 — 3주차의 하단 mock 즐겨찾기 버튼을 없애고, 제목·정보 텍스트 오른쪽에
+/// [FavoriteButton](북마크)을 둡니다. 상태는 [FavoriteDetailViewModel]이 서버 응답으로 정합니다.
+/// - 화면이 처음 만들어질 때(initState) 즐겨찾기 여부를 한 번 조회합니다. build()에서는 조회하지 않습니다.
+/// - 등록·해제 중에는 북마크 자리에만 로딩, 실패하면 이전 아이콘 유지 + Snackbar + 하단 안내
 class MovieDetailScreen extends StatefulWidget {
   const MovieDetailScreen({super.key, required this.movieId, this.detail});
 
@@ -51,19 +53,23 @@ class MovieDetailScreen extends StatefulWidget {
 }
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Mock 영화(widget.detail)에는 즐겨찾기 ViewModel이 없습니다.
+    if (widget.detail != null || widget.movieId == null) return;
+    // 첫 build 도중 notifyListeners()가 실행되지 않도록 프레임이 끝난 뒤 한 번 조회합니다.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<FavoriteDetailViewModel>().load();
+    });
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
       );
-  }
-
-  /// 서버가 성공을 돌려줘 상태가 바뀐 경우에만 Snackbar를 띄웁니다.
-  Future<void> _toggleFavorite() async {
-    final changedTo = await context.read<FavoriteDetailViewModel>().toggle();
-    if (!mounted || changedTo == null) return;
-    _showMessage(changedTo ? '즐겨찾기에 추가했습니다.' : '즐겨찾기를 해제했습니다.');
   }
 
   /// 홈 추천 신작(Mock 영화)은 TMDB id가 아니므로 서버 즐겨찾기에 등록하지 않습니다.
@@ -135,28 +141,27 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       body: ListView(
         children: [
           _HeroPoster(detail: detail),
-          _InfoSection(detail: detail),
+          _InfoSection(
+            detail: detail,
+            favoriteButton: isMock
+                // Mock 영화는 서버 즐겨찾기 대상이 아니라 안내만 합니다.
+                ? FavoriteBookmarkBox(
+                    isFavorite: false,
+                    onPressed: _favoriteMockMovie,
+                  )
+                : const FavoriteButton(),
+          ),
           _SynopsisSection(paragraphs: detail.synopsis),
         ],
       ),
       bottomNavigationBar: isMock
-          ? _ActionBar(
-              favoriteButton: FavoriteButton(
-                isFavorite: false,
-                textStyle: Theme.of(context).textTheme.titleSmall,
-                onPressed: _favoriteMockMovie,
-              ),
-              onRate: _rateMockMovie,
-            )
+          ? _ActionBar(onRate: _rateMockMovie)
           : Consumer<FavoriteDetailViewModel>(
               builder: (context, favorite, _) => _ActionBar(
-                favoriteButton: FavoriteButton(
-                  isFavorite: favorite.isFavorite ?? false,
-                  isLoading: favorite.isBusy,
-                  textStyle: Theme.of(context).textTheme.titleSmall,
-                  onPressed: favorite.canRequest ? _toggleFavorite : null,
-                ),
-                errorMessage: favorite.errorMessage,
+                // 등록·해제 실패만 하단에 남깁니다. (첫 여부 조회 실패는 북마크 아래 새로고침 버튼)
+                errorMessage: favorite.hasLoadedStatus
+                    ? favorite.errorMessage
+                    : null,
                 onRate: canRate ? _rate : null,
               ),
             ),
@@ -249,9 +254,12 @@ class _HeroPoster extends StatelessWidget {
 
 /// 인포 섹션 — 390 x 216, padding 24 / 16 / 40 / 16, gap 4
 class _InfoSection extends StatelessWidget {
-  const _InfoSection({required this.detail});
+  const _InfoSection({required this.detail, required this.favoriteButton});
 
   final MovieDetail detail;
+
+  /// 제목·정보 텍스트 오른쪽에 두는 즐겨찾기 버튼 (9주차)
+  final Widget favoriteButton;
 
   /// 2024 • 로맨스/드라마 • 124분 — 연도·장르가 없으면 빼고 표시합니다.
   String get _meta => [
@@ -281,15 +289,30 @@ class _InfoSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 제목 — Manrope 500 / 28 / 36, #1B1C1A
-          Text(
-            detail.title,
-            style: textTheme.headlineMedium?.copyWith(
-              color: AppColors.detailText,
-            ),
+          // 9주차 — 제목·정보 텍스트를 Row로 감싸고 오른쪽에 즐겨찾기 버튼을 둡니다.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 제목 — Manrope 500 / 28 / 36, #1B1C1A
+                    Text(
+                      detail.title,
+                      style: textTheme.headlineMedium?.copyWith(
+                        color: AppColors.detailText,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(_meta, style: captionStyle),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              favoriteButton,
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(_meta, style: captionStyle),
           const SizedBox(height: 4),
           // 별점 섹션 — padding-top 12, gap 4
           Padding(
@@ -399,18 +422,12 @@ class _SynopsisSection extends StatelessWidget {
   }
 }
 
-/// 하단 고정 액션 버튼 — 높이 81, padding 16, gap 8, 배경 #FAF9F5, border-top 1px #CBC4D2
+/// 하단 고정 액션 버튼 — 높이 81, padding 16, 배경 #FAF9F5, border-top 1px #CBC4D2
+/// 9주차 — 즐겨찾기 버튼이 제목 옆으로 옮겨가 평점 남기기가 전체 너비를 씁니다.
 class _ActionBar extends StatelessWidget {
-  const _ActionBar({
-    required this.favoriteButton,
-    required this.onRate,
-    this.errorMessage,
-  });
+  const _ActionBar({required this.onRate, this.errorMessage});
 
-  /// 즐겨찾기 버튼 — 상태는 [FavoriteDetailViewModel]이 정합니다.
-  final Widget favoriteButton;
-
-  /// 즐겨찾기 실패 안내 — 있으면 버튼 위에 보여주고, 버튼은 이전 상태 그대로입니다.
+  /// 즐겨찾기 등록·해제 실패 안내 — 평점 버튼 아래에 보여줍니다. (W9 실패·기존 상태 유지 시안)
   final String? errorMessage;
 
   /// null이면 평점 남기기가 비활성 (영화 id를 모를 때)
@@ -436,11 +453,11 @@ class _ActionBar extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              _rateButton(colors, labelStyle),
               if (errorMessage != null) ...[
+                const SizedBox(height: 16),
                 _FavoriteErrorBox(message: errorMessage!),
-                const SizedBox(height: 12),
               ],
-              _buttons(colors, labelStyle),
             ],
           ),
         ),
@@ -448,31 +465,20 @@ class _ActionBar extends StatelessWidget {
     );
   }
 
-  Widget _buttons(ColorScheme colors, TextStyle? labelStyle) {
-    return Row(
-      children: [
-        // Figma 너비 176 : 174
-        Expanded(
-          flex: 176,
-          // 즐겨찾기 상태는 제공된 북마크 아이콘(W3-REQ)을 사용합니다.
-          child: favoriteButton,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 174,
-          // 채움형 — 배경 #6750A4, 아이콘 20 x 20 #FFFFFF, box-shadow 0 1 2 #0000000D
-          child: PillButton(
-            label: '평점 남기기',
-            iconAsset: 'assets/icons/detail_rate_review.svg',
-            iconSize: const Size(20, 20),
-            color: colors.primary,
-            foregroundColor: colors.onPrimary,
-            textStyle: labelStyle,
-            shadows: AppShadows.card,
-            onPressed: onRate,
-          ),
-        ),
-      ],
+  // 채움형 — 전체 너비, 배경 #6750A4, 아이콘 20 x 20 #FFFFFF, box-shadow 0 1 2 #0000000D
+  Widget _rateButton(ColorScheme colors, TextStyle? labelStyle) {
+    return SizedBox(
+      width: double.infinity,
+      child: PillButton(
+        label: '평점 남기기',
+        iconAsset: 'assets/icons/detail_rate_review.svg',
+        iconSize: const Size(20, 20),
+        color: colors.primary,
+        foregroundColor: colors.onPrimary,
+        textStyle: labelStyle,
+        shadows: AppShadows.card,
+        onPressed: onRate,
+      ),
     );
   }
 }

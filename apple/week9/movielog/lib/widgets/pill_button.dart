@@ -24,7 +24,6 @@ class PillButton extends StatelessWidget {
     this.textStyle,
     this.shadows = const [],
     this.selected,
-    this.isLoading = false,
   });
 
   final String label;
@@ -47,21 +46,8 @@ class PillButton extends StatelessWidget {
   /// 켜고 끄는 버튼이면 현재 상태 (예: 즐겨찾기) — 접근성에 전달
   final bool? selected;
 
-  /// 요청 중 — 아이콘 자리에 로딩 표시를 그리고 눌러도 반응하지 않습니다. (9주차 즐겨찾기)
-  final bool isLoading;
-
   /// SVG·PNG 모두 [foregroundColor]로 색을 입힙니다.
   Widget _icon() {
-    if (isLoading) {
-      final size = iconSize.height;
-      return SizedBox.square(
-        dimension: size,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: foregroundColor,
-        ),
-      );
-    }
     if (iconAsset.endsWith('.svg')) {
       return SvgPicture.asset(
         iconAsset,
@@ -101,7 +87,7 @@ class PillButton extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: isLoading ? null : onPressed,
+            onTap: onPressed,
             child: SizedBox(
               height: 48,
               child: Row(

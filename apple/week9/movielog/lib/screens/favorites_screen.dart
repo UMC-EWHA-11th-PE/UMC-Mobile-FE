@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../data/models/favorite_list_item.dart';
+import '../data/models/tmdb_movie_dto.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../view_models/favorites_view_model.dart';
@@ -19,9 +19,29 @@ import '../widgets/tmdb_poster_image.dart';
 /// - 조회 오류: 안내 + 다시 시도
 /// - 목록: 카드마다 TMDB 포스터·제목. TMDB 조회에 실패한 카드만 placeholder와 "정보 다시 불러오기"
 ///
-/// 카드를 누르면 영화 상세로 이동하고, 돌아오면 상세에서 해제했을 수 있으므로 조용히 다시 조회합니다.
-class FavoritesScreen extends StatelessWidget {
-  const FavoritesScreen({super.key});
+/// 연결 순서: `/my/favorites` Route → 현재 세션의 [FavoritesViewModel] → 화면 initState에서 [FavoritesViewModel.refresh]
+/// → 즐겨찾기 조회 → TMDB 정보 보충. build()에서는 조회하지 않습니다.
+///
+/// 카드를 누르면 [onOpenMovie]로 영화 상세에 가고, 돌아오면 상세에서 해제했을 수 있으므로 조용히 다시 조회합니다.
+/// 아래로 당기면 목록을 새로고침합니다.
+class FavoritesScreen extends StatefulWidget {
+  const FavoritesScreen({super.key, required this.onOpenMovie});
+
+  /// 영화 상세로 이동 — Route가 `/movies/{id}`에 TmdbMovieDto를 extra로 넘깁니다.
+  final Future<void> Function(TmdbMovieDto movie) onOpenMovie;
+
+  @override
+  State<FavoritesScreen> createState() => _FavoritesScreenState();
+}
+
+class _FavoritesScreenState extends State<FavoritesScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<FavoritesViewModel>().refresh();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,32 +51,38 @@ class FavoritesScreen extends StatelessWidget {
         titleStyle: AppTheme.appBarTitleBold,
       ),
       body: Consumer<FavoritesViewModel>(
-        builder: (context, viewModel, _) => switch (viewModel.phase) {
+        builder: (context, vm, _) => switch (vm.phase) {
           LoadPhase.idle || LoadPhase.loading => const MovieListLoading(),
           LoadPhase.empty => const _FavoritesEmpty(),
           LoadPhase.error => _FavoritesError(
-            message: viewModel.message ?? '즐겨찾기를 불러오지 못했습니다.',
-            onRetry: viewModel.load,
+            message: vm.errorMessage ?? '즐겨찾기를 불러오지 못했습니다.',
+            onRetry: vm.refresh,
           ),
-          LoadPhase.ready => ListView.separated(
-            padding: const EdgeInsets.fromLTRB(22, 32, 22, 24),
-            itemCount: viewModel.items.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 18),
-            itemBuilder: (context, index) {
-              final item = viewModel.items[index];
-              return _FavoriteCard(
-                item: item,
-                onTap: () async {
-                  await context.push(
-                    '/movies/${item.movieId}',
-                    extra: item.movie,
-                  );
-                  // 상세에서 해제했을 수 있으므로 돌아오면 목록을 다시 맞춥니다.
-                  if (!viewModel.isDisposed) viewModel.load(silent: true);
-                },
-                onRetry: () => viewModel.retryMovie(item.movieId),
-              );
-            },
+          LoadPhase.ready => RefreshIndicator(
+            onRefresh: () => vm.refresh(silent: true),
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(22, 32, 22, 24),
+              itemCount: vm.items.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 18),
+              itemBuilder: (context, index) {
+                final item = vm.items[index];
+                final movie = item.movie;
+                return _FavoriteCard(
+                  item: item,
+                  // 정보를 못 가져온 카드는 상세로 가지 않고 "정보 다시 불러오기"만 받습니다.
+                  onTap: movie == null
+                      ? null
+                      : () async {
+                          await widget.onOpenMovie(movie);
+                          if (!mounted || vm.isDisposed) return;
+                          // ViewModel이 같은 현재 세션인지 다시 확인한 뒤 목록을 맞춥니다.
+                          await vm.refresh(silent: true);
+                        },
+                  onRetry: () => vm.retryMovie(item.movieId),
+                );
+              },
+            ),
           ),
         },
       ),
@@ -135,7 +161,7 @@ class _FavoriteCard extends StatelessWidget {
   });
 
   final FavoriteListItem item;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final VoidCallback onRetry;
 
   static const _posterSize = Size(74, 110);
@@ -150,7 +176,8 @@ class _FavoriteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final movie = item.movie;
-    final loadingMovie = movie == null && !item.movieFailed;
+    final failed = movie == null && item.errorMessage != null;
+    final loadingMovie = movie == null && !failed;
     final linkStyle = AppTheme.ratingCardScore.copyWith(fontSize: 13);
 
     return Material(
@@ -206,7 +233,7 @@ class _FavoriteCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       Text('즐겨찾기한 영화', style: linkStyle),
-                      if (item.movieFailed) ...[
+                      if (failed) ...[
                         const SizedBox(height: 6),
                         // 이 카드만 TMDB를 다시 조회합니다.
                         Semantics(

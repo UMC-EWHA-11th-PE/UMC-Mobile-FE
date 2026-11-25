@@ -14,6 +14,7 @@ import 'package:movielog/data/local/secure_storage_cleanup.dart';
 import 'package:movielog/data/services/fake_movie_service.dart';
 import 'package:dio/dio.dart';
 import 'package:movielog/data/models/tmdb_genre_dto.dart';
+import 'package:movielog/data/models/tmdb_movie_dto.dart';
 import 'package:movielog/data/models/tmdb_movie_page.dart';
 import 'package:movielog/data/services/tmdb_movie_service.dart';
 import 'package:movielog/screens/movie_list_screen.dart';
@@ -28,7 +29,7 @@ Widget _app(TmdbMovieService service, {Key? key}) => MaterialApp(
   theme: AppTheme.light,
   home: ChangeNotifierProvider<PagedMoviesViewModel>(
     key: key,
-    create: (_) => PagedMoviesViewModel(service)..loadInitial(),
+    create: (_) => PagedMoviesViewModel(service)..start(),
     child: const MovieListScreen(),
   ),
 );
@@ -108,7 +109,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('영화를 불러오지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
+      expect(find.text('영화 목록을 불러오지 못했습니다.'), findsOneWidget);
 
       failing = false;
       await tester.tap(find.text('다시 시도'));
@@ -276,7 +277,7 @@ void main() {
         fakeTmdbService(requests: requests),
       );
 
-      final loading = viewModel.loadInitial();
+      final loading = viewModel.start();
       await viewModel.refresh();
       await loading;
 
@@ -384,7 +385,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(Dialog), findsNothing);
-      expect(find.text('영화를 불러오지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
+      expect(find.text('영화 목록을 불러오지 못했습니다.'), findsOneWidget);
     });
   });
 
@@ -405,19 +406,19 @@ void main() {
         fakeTmdbService(results: manyMovies(45), requests: requests),
       );
 
-      await viewModel.loadInitial();
+      await viewModel.start();
       expect(viewModel.movies, hasLength(20));
       expect(viewModel.hasMore, isTrue);
 
-      await viewModel.loadMore();
-      await viewModel.loadMore();
+      await viewModel.loadNextPage();
+      await viewModel.loadNextPage();
       expect(viewModel.movies.map((m) => m.id), [
         for (var i = 1; i <= 45; i++) i,
       ]);
       expect(viewModel.hasMore, isFalse);
 
       // 마지막 page 뒤에는 더 요청하지 않음
-      await viewModel.loadMore();
+      await viewModel.loadNextPage();
       expect(pages(requests), ['1', '2', '3']);
     });
 
@@ -427,8 +428,8 @@ void main() {
       final viewModel = PagedMoviesViewModel(
         fakeTmdbService(results: overlapped),
       );
-      await viewModel.loadInitial();
-      await viewModel.loadMore();
+      await viewModel.start();
+      await viewModel.loadNextPage();
 
       final ids = viewModel.movies.map((m) => m.id).toList();
       expect(ids.toSet().length, ids.length);
@@ -445,17 +446,17 @@ void main() {
           fail: () => failing,
         ),
       );
-      await viewModel.loadInitial();
+      await viewModel.start();
 
       failing = true;
-      await viewModel.loadMore();
-      expect(viewModel.loadMoreFailed, isTrue);
+      await viewModel.loadNextPage();
+      expect(viewModel.loadMoreError, isNotNull);
       expect(viewModel.phase, LoadPhase.ready);
       expect(viewModel.movies, hasLength(20));
 
       failing = false;
-      await viewModel.loadMore();
-      expect(viewModel.loadMoreFailed, isFalse);
+      await viewModel.loadNextPage();
+      expect(viewModel.loadMoreError, isNull);
       expect(viewModel.movies, hasLength(30));
       expect(pages(requests), ['1', '2', '2']);
     });
@@ -480,10 +481,10 @@ void main() {
           if (holdPage2) await gate.future;
         }),
       );
-      await viewModel.loadInitial();
+      await viewModel.start();
 
       holdPage2 = true;
-      final loadingMore = viewModel.loadMore(); // 전체 2page — 응답 지연
+      final loadingMore = viewModel.loadNextPage(); // 전체 2page — 응답 지연
       holdPage2 = false;
       await viewModel.selectGenre(878); // 새 조건
       gate.complete();
@@ -492,6 +493,29 @@ void main() {
       expect(viewModel.movies.map((m) => m.title), ['SF 영화']);
       expect(viewModel.isLoadingMore, isFalse);
       expect(viewModel.hasMore, isFalse);
+    });
+  });
+
+  group('page 범위', () {
+    test('total_pages가 500보다 커도 500 page까지만 요청할 수 있다', () async {
+      final viewModel = PagedMoviesViewModel(_FixedPages(totalPages: 900));
+      await viewModel.loadInitial();
+      expect(viewModel.totalPages, PagedMoviesViewModel.maxTmdbPage);
+      expect(viewModel.nextPage, 2);
+
+      // 499 page까지 받았다고 가정 — 500을 받으면 끝
+      viewModel.nextPage = 500;
+      await viewModel.loadNextPage();
+      expect(viewModel.nextPage, 501);
+      expect(viewModel.hasMore, isFalse);
+    });
+
+    test('응답 page가 요청 page와 다르면 형식 오류로 보고 목록을 바꾸지 않는다', () async {
+      final viewModel = PagedMoviesViewModel(
+        _FixedPages(totalPages: 3, skew: 1),
+      );
+      await viewModel.loadInitial();
+      expect(viewModel.phase, LoadPhase.error);
     });
   });
 
@@ -633,4 +657,35 @@ class _GatedService extends TmdbMovieService {
 
   @override
   Future<List<TmdbGenreDto>> fetchGenres() => _inner.fetchGenres();
+}
+
+/// 요청한 page를 그대로(또는 [skew]만큼 어긋나게) 돌려주는 Discover — page 범위 확인용
+class _FixedPages extends TmdbMovieService {
+  _FixedPages({required this.totalPages, this.skew = 0}) : super(Dio());
+
+  final int totalPages;
+  final int skew;
+
+  @override
+  Future<TmdbMoviePageDto> discoverMovies({
+    required int page,
+    int? genreId,
+  }) async => TmdbMoviePageDto(
+    page: page + skew,
+    results: [
+      TmdbMovieDto(
+        id: page,
+        title: '영화 $page',
+        overview: '',
+        posterPath: null,
+        backdropPath: null,
+        releaseDate: null,
+        genreIds: const [],
+        voteAverage: 0,
+        popularity: 0,
+      ),
+    ],
+    totalPages: totalPages,
+    totalResults: totalPages,
+  );
 }

@@ -15,8 +15,11 @@ import '../widgets/movielog_button.dart';
 /// TMDB `/search/movie`를 [PagedMoviesViewModel]로 page 단위 조회합니다.
 /// - 검색 결과: 영화 목록과 같은 그리드 + "검색 결과 더 보기"
 /// - 빈 결과: "검색 결과가 없습니다."
-/// - 오류: 안내 + 다시 시도
+/// - 오류: 안내 + 다시 시도 (마지막으로 제출한 검색어로)
+/// - 처음 진입(idle)과 결과 없음(empty)을 구분합니다.
 ///
+/// 글자를 입력할 때마다 요청하지 않고 제출할 때만, 새 검색은 page 1부터 요청합니다.
+/// 빈 검색어는 서버에 보내지 않고 입력 안내를 보여 줍니다.
 /// 검색어를 바꾸면 ViewModel이 generation을 올려, 이전 검색어의 늦은 응답을 버립니다.
 class MovieSearchScreen extends StatefulWidget {
   const MovieSearchScreen({super.key});
@@ -28,6 +31,12 @@ class MovieSearchScreen extends StatefulWidget {
 class _MovieSearchScreenState extends State<MovieSearchScreen> {
   final _controller = TextEditingController();
 
+  /// 마지막으로 제출한 검색어 — 오류 화면의 다시 시도에 씁니다.
+  String _submittedQuery = '';
+
+  /// 빈 검색어를 제출했을 때 입력칸 아래 안내
+  String? _inputError;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -35,8 +44,17 @@ class _MovieSearchScreenState extends State<MovieSearchScreen> {
   }
 
   void _submit() {
+    final query = _controller.text.trim();
+    if (query.isEmpty) {
+      setState(() => _inputError = '검색어를 입력합니다.');
+      return;
+    }
     FocusScope.of(context).unfocus();
-    context.read<PagedMoviesViewModel>().search(_controller.text);
+    setState(() {
+      _inputError = null;
+      _submittedQuery = query;
+    });
+    context.read<PagedMoviesViewModel>().loadInitial(query: query);
   }
 
   @override
@@ -62,6 +80,7 @@ class _MovieSearchScreenState extends State<MovieSearchScreen> {
               style: Theme.of(context).textTheme.bodyLarge,
               decoration: InputDecoration(
                 hintText: '영화 제목을 입력하세요',
+                errorText: _inputError,
                 fillColor: AppColors.entryCardBackground,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -84,8 +103,15 @@ class _MovieSearchScreenState extends State<MovieSearchScreen> {
           Expanded(
             child: Consumer<PagedMoviesViewModel>(
               builder: (context, viewModel, _) => switch (viewModel.phase) {
-                // 아직 검색하지 않음
-                LoadPhase.idle => const SizedBox.shrink(),
+                // 아직 검색하지 않음 — 결과 없음(empty)과 구분합니다.
+                LoadPhase.idle => Center(
+                  child: Text(
+                    '검색어를 입력합니다.',
+                    style: AppTheme.dialogBody.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
                 LoadPhase.loading => const MovieListLoading(),
                 LoadPhase.empty => Center(
                   child: Text(
@@ -97,18 +123,14 @@ class _MovieSearchScreenState extends State<MovieSearchScreen> {
                   ),
                 ),
                 LoadPhase.error => _SearchError(
-                  message: viewModel.message ?? '검색 결과를 불러오지 못했습니다.',
-                  onRetry: viewModel.retry,
+                  message: viewModel.errorMessage ?? '검색 결과를 불러오지 못했습니다.',
+                  onRetry: () => viewModel.loadInitial(query: _submittedQuery),
                 ),
                 LoadPhase.ready => MovieGrid(
                   movies: viewModel.movies,
                   footer: MoviePageFooter(
-                    hasMore: viewModel.hasMore,
-                    isLoadingMore: viewModel.isLoadingMore,
-                    failed: viewModel.loadMoreFailed,
-                    onLoadMore: viewModel.loadMore,
+                    vm: viewModel,
                     loadMoreLabel: '검색 결과 더 보기',
-                    failedMessage: '추가 검색 결과 조회에 실패했습니다.',
                     endMessage: '모든 검색 결과를 확인했습니다.',
                   ),
                 ),

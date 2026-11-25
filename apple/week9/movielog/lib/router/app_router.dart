@@ -97,6 +97,19 @@ class AppRouter {
             child: const RegisterScreen(),
           ),
         ),
+        // 영화 검색 (/movies/search) — 하단 탭 없이 전체 화면 (9주차)
+        // 정적인 search를 동적인 /movies/:movieId보다 먼저 등록합니다.
+        // 순서가 바뀌면 'search'가 영화 ID로 해석됩니다.
+        // 영화 목록과 다른 PagedMoviesViewModel 인스턴스를 씁니다.
+        GoRoute(
+          path: '/movies/search',
+          builder: (context, state) =>
+              ChangeNotifierProvider<PagedMoviesViewModel>(
+                create: (context) =>
+                    PagedMoviesViewModel(context.read<TmdbMovieService>()),
+                child: const MovieSearchScreen(),
+              ),
+        ),
         // 영화 상세 — 하단 탭 없이 전체 화면으로 표시 (예: /movies/969681)
         // 경로의 movieId는 TMDB id이고, ViewModel이 TMDB 상세를 불러옵니다.
         // 상세 정보를 extra로 함께 받으면(홈 추천 신작 Mock) 그대로 보여줍니다.
@@ -108,20 +121,23 @@ class AppRouter {
           path: '/movies/:movieId',
           builder: (context, state) {
             final movieId = int.tryParse(state.pathParameters['movieId'] ?? '');
-            // 내 정보(email)가 늦게 도착하면 다시 그려 key를 갱신합니다.
-            final email = context.select<AuthViewModel, String?>(
-              (auth) => auth.member?.email,
-            );
             final detail = state.extra;
             if (detail is MovieDetail) {
               return MovieDetailScreen(movieId: movieId, detail: detail);
+            }
+            // 내 정보가 준비되고 현재 세션과 일치할 때까지 로딩(실패하면 재시도)을 보여 줍니다.
+            final auth = context.watch<AuthViewModel>();
+            final member = auth.member;
+            final guard = context.read<SessionGuard>();
+            if (member == null || guard.accountId != member.email) {
+              return _MemberPendingScreen(title: '영화 상세', auth: auth);
             }
             // 목록·홈에서 넘긴 TmdbMovieDto는 경로 id와 같을 때만 씁니다.
             // 직접 접근·Deep Link처럼 extra가 없으면 TMDB 상세를 다시 조회합니다.
             final initialMovie = detail is TmdbMovieDto && detail.id == movieId
                 ? detail
                 : null;
-            final guard = context.read<SessionGuard>();
+            final screen = MovieDetailScreen(movieId: movieId);
             // TMDB 상세(공개 정보)는 계정과 관계없으므로 바깥에 두어 key가 바뀌어도 다시 조회하지 않습니다.
             return ChangeNotifierProvider<MovieDetailViewModel>(
               create: (context) => MovieDetailViewModel(
@@ -134,30 +150,24 @@ class AppRouter {
                     .upsert(auth.sessionVersion, rating),
                 onSessionExpired: auth.expireSession,
               )..load(),
-              // 사용자별 즐겨찾기 여부는 안쪽에서 계정·세션 key로 만듭니다.
-              child: ChangeNotifierProvider<FavoriteDetailViewModel>(
-                key: ValueKey('$email:${guard.generation}'),
-                create: (context) => FavoriteDetailViewModel(
-                  context.read<FavoriteApiService>(),
-                  movieId: movieId,
-                  guard: guard,
-                  onSessionExpired: auth.expireSession,
-                )..load(),
-                child: MovieDetailScreen(movieId: movieId),
-              ),
+              // 잘못된 경로(movieId 없음)면 상세가 오류를 보여주므로 즐겨찾기 ViewModel을 만들지 않습니다.
+              child: movieId == null
+                  ? screen
+                  // 사용자별 즐겨찾기 여부는 안쪽에서 계정·세션 key로 만듭니다.
+                  // 여부 조회(load)는 상세 화면 initState에서 한 번 호출합니다.
+                  : ChangeNotifierProvider<FavoriteDetailViewModel>(
+                      key: ValueKey('${member.email}:${guard.generation}'),
+                      create: (context) => FavoriteDetailViewModel(
+                        movieId: movieId,
+                        favoriteApi: context.read<FavoriteApiService>(),
+                        sessionGuard: guard,
+                        accountId: member.email,
+                        onSessionExpired: auth.expireSession,
+                      ),
+                      child: screen,
+                    ),
             );
           },
-        ),
-        // 영화 검색 — 하단 탭 없이 전체 화면 (9주차)
-        // /movies/:movieId와 겹치지 않도록 최상위 /search로 둡니다.
-        GoRoute(
-          path: '/search',
-          builder: (context, state) =>
-              ChangeNotifierProvider<PagedMoviesViewModel>(
-                create: (context) =>
-                    PagedMoviesViewModel(context.read<TmdbMovieService>()),
-                child: const MovieSearchScreen(),
-              ),
         ),
         // 하단 탭(홈/영화/마이)을 공유하는 화면들
         ShellRoute(
@@ -186,7 +196,7 @@ class AppRouter {
                   ChangeNotifierProvider<PagedMoviesViewModel>(
                     create: (context) =>
                         PagedMoviesViewModel(context.read<TmdbMovieService>())
-                          ..loadInitial(),
+                          ..start(),
                     child: const MovieListScreen(),
                   ),
             ),
@@ -234,19 +244,32 @@ class AppRouter {
                   path: 'favorites',
                   parentNavigatorKey: rootNavigatorKey,
                   builder: (context, state) {
-                    final email = context.select<AuthViewModel, String?>(
-                      (auth) => auth.member?.email,
-                    );
+                    final auth = context.watch<AuthViewModel>();
+                    final member = auth.member;
                     final guard = context.read<SessionGuard>();
+                    // 내 정보가 없으면 로딩 또는 오류·재시도를 먼저 보여 줍니다.
+                    if (member == null || guard.accountId != member.email) {
+                      return _MemberPendingScreen(title: '내 즐겨찾기', auth: auth);
+                    }
+                    // 즐겨찾기 API에는 memberId를 보내지 않고 JWT로 사용자를 구분합니다.
+                    // email은 화면 쪽 세션 구분(ValueKey·SessionGuard)에만 씁니다.
                     return ChangeNotifierProvider<FavoritesViewModel>(
-                      key: ValueKey('$email:${guard.generation}'),
+                      key: ValueKey('${member.email}:${guard.generation}'),
                       create: (context) => FavoritesViewModel(
-                        context.read<FavoriteApiService>(),
-                        context.read<TmdbMovieService>(),
-                        guard: guard,
+                        favoriteApi: context.read<FavoriteApiService>(),
+                        tmdbApi: context.read<TmdbMovieService>(),
+                        sessionGuard: guard,
+                        accountId: member.email,
                         onSessionExpired: auth.expireSession,
-                      )..load(),
-                      child: const FavoritesScreen(),
+                      ),
+                      child: FavoritesScreen(
+                        onOpenMovie: (movie) async {
+                          await context.push(
+                            '/movies/${movie.id}',
+                            extra: movie,
+                          );
+                        },
+                      ),
                     );
                   },
                 ),
@@ -287,5 +310,35 @@ class AppRouter {
     if (path.startsWith('/my')) return 2;
 
     return 0;
+  }
+}
+
+/// 내 정보(`/members/me`)가 아직 없거나 SessionGuard에 연결되기 전 — 계정별 화면을 만들지 않고 기다립니다.
+///
+/// 내 정보 조회가 실패했으면 로딩만 계속 보여주지 않고 다시 조회 버튼을 보여 줍니다.
+class _MemberPendingScreen extends StatelessWidget {
+  const _MemberPendingScreen({required this.title, required this.auth});
+
+  final String title;
+  final AuthViewModel auth;
+
+  @override
+  Widget build(BuildContext context) {
+    // 아직 아무도 불러오지 않았으면(MainScreen을 거치지 않고 바로 연 경우) 여기서 한 번 불러옵니다.
+    if (auth.memberStatus == MemberLoadStatus.idle) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => auth.loadMember());
+    }
+    return Scaffold(
+      appBar: CommonAppBar(title: title, titleStyle: AppTheme.appBarTitleBold),
+      body: Center(
+        child: auth.memberStatus == MemberLoadStatus.error
+            ? MovieLogButton(
+                label: '내 정보 다시 조회',
+                width: 160,
+                onPressed: () => auth.loadMember(force: true),
+              )
+            : const CircularProgressIndicator(),
+      ),
+    );
   }
 }

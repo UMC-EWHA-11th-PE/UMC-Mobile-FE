@@ -6,6 +6,7 @@ import 'package:shared_preferences_platform_interface/shared_preferences_async_p
 
 import 'package:movielog/app/movie_log_app.dart';
 import 'package:movielog/view_models/learning_member_session.dart';
+import 'package:movielog/widgets/favorite_button.dart';
 import 'package:movielog/widgets/movie_card.dart';
 
 import 'fake_sign_up.dart';
@@ -577,18 +578,20 @@ void main() {
       expect(tester.getSize(chip).height, 28);
 
       // 인포 섹션 216 → 시놉시스는 히어로 아래 216에서 시작 (padding 16 + border 1)
+      // W9 — 제목 행 오른쪽 북마크(박스 64 + 8 + 라벨 10 = 82)가 제목·정보(36 + 4 + 20 = 60)보다
+      // 22 높아 인포 섹션이 238이 됩니다.
       final synopsisTitle = find.text('시놉시스');
-      expect(tester.getTopLeft(synopsisTitle).dy, 64 + 585 + 216 + 1 + 16);
+      expect(tester.getTopLeft(synopsisTitle).dy, 64 + 585 + 238 + 1 + 16);
 
-      // 하단 고정 버튼: 높이 48, 영역 높이 81
-      final bookmark = find.ancestor(
-        of: find.text('즐겨찾기'),
+      // 하단 고정 버튼: 평점 남기기 하나가 전체 너비(358), 높이 48, 영역 높이 81 (W9)
+      final rate = find.ancestor(
+        of: find.text('평점 남기기'),
         matching: find.byType(InkWell),
       );
-      expect(tester.getSize(bookmark).height, 48);
-      expect(1400 - tester.getTopLeft(bookmark).dy, 48 + 16);
+      expect(tester.getSize(rate), const Size(358, 48));
+      expect(1400 - tester.getTopLeft(rate).dy, 48 + 16);
       final actionBar = find
-          .ancestor(of: bookmark, matching: find.byType(SafeArea))
+          .ancestor(of: rate, matching: find.byType(SafeArea))
           .first;
       expect(
         tester
@@ -634,7 +637,12 @@ void main() {
     ) async {
       await openDetail(tester);
 
-      await tester.tap(find.text('즐겨찾기'));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(FavoriteBookmarkBox),
+          matching: find.byType(InkWell),
+        ),
+      );
       await tester.pump();
       expect(find.text('예시 영화는 즐겨찾기할 수 없습니다.'), findsOneWidget);
       // 등록되지 않았으므로 채워진 북마크(PNG)는 보이지 않습니다.

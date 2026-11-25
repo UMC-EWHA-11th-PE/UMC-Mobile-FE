@@ -61,21 +61,27 @@ void main() {
       _SlowSearch(fakeTmdbService(), {'별빛': slow.future}),
     );
 
-    final first = viewModel.search('별빛');
-    await viewModel.search('우주');
+    final first = viewModel.loadInitial(query: '별빛');
+    await viewModel.loadInitial(query: '우주');
     slow.complete();
     await first;
 
-    expect(viewModel.criteria.query, '우주');
+    expect(viewModel.condition.query, '우주');
     expect(viewModel.movies.map((m) => m.title), ['우주의 끝에서']);
   });
 
-  test('빈 검색어는 요청하지 않는다', () async {
+  testWidgets('처음 진입은 입력 안내, 빈 검색어는 요청하지 않고 입력칸 아래 안내', (tester) async {
     final requests = <Uri>[];
-    final viewModel = PagedMoviesViewModel(fakeTmdbService(requests: requests));
-    await viewModel.search('   ');
+    await tester.pumpWidget(_app(fakeTmdbService(requests: requests)));
+    expect(find.text('검색어를 입력합니다.'), findsOneWidget); // idle
+
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.tap(find.text('검색'));
+    await tester.pumpAndSettle();
+
     expect(requests, isEmpty);
-    expect(viewModel.phase, LoadPhase.idle);
+    // 입력칸 아래 errorText + idle 안내
+    expect(find.text('검색어를 입력합니다.'), findsNWidgets(2));
   });
 
   testWidgets('검색 결과 → 검색 결과 더 보기', (tester) async {
@@ -143,6 +149,8 @@ void main() {
     await tester.tap(find.byTooltip('검색'));
     await tester.pumpAndSettle();
     expect(find.byType(MovieSearchScreen), findsOneWidget);
+    // /movies/search가 /movies/:movieId보다 먼저 등록돼 'search'를 영화 ID로 해석하지 않습니다.
+    expect(find.text('영화 정보를 불러오지 못했어요.'), findsNothing);
     expect(find.text('마이'), findsNothing);
 
     await tester.tap(find.byTooltip('뒤로가기'));

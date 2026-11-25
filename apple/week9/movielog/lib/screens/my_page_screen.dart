@@ -53,7 +53,12 @@ class MyPageScreen extends StatelessWidget {
             _EntryCard(title: '내가 등록한 평점', path: '/my/ratings'),
             // W9 — 내가 등록한 평점 아래에 내 즐겨찾기 행
             SizedBox(height: 8),
-            _EntryCard(title: '내 즐겨찾기', path: '/my/favorites'),
+            // 계정별 화면이라 내 정보(member)가 준비된 뒤에만 켭니다.
+            _EntryCard(
+              title: '내 즐겨찾기',
+              path: '/my/favorites',
+              requiresMember: true,
+            ),
             SizedBox(height: 28),
             _FavoriteGenres(),
           ],
@@ -335,14 +340,25 @@ class _FavoriteGenres extends StatelessWidget {
 /// 화면 진입 카드 — 358 x 64, 배경 #FFFFFF, 테두리 1.5px #D6C9E8 (W6-ENTRY)
 /// 누르면 하단 탭 없이 [path] 화면을 위에 띄웁니다. (/my/ratings, /my/favorites)
 class _EntryCard extends StatelessWidget {
-  const _EntryCard({required this.title, required this.path});
+  const _EntryCard({
+    required this.title,
+    required this.path,
+    this.requiresMember = false,
+  });
 
   final String title;
   final String path;
 
+  /// true면 `/members/me`로 내 정보(member)를 받은 뒤에만 누를 수 있습니다. (내 즐겨찾기)
+  final bool requiresMember;
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final hasMember = context.select<AuthViewModel, bool>(
+      (auth) => auth.member != null,
+    );
+    final enabled = !requiresMember || hasMember;
 
     return Material(
       color: AppColors.entryCardBackground,
@@ -352,7 +368,7 @@ class _EntryCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push(path),
+        onTap: enabled ? () => context.push(path) : null,
         child: SizedBox(
           height: 64,
           child: Padding(
@@ -360,10 +376,21 @@ class _EntryCard extends StatelessWidget {
             padding: const EdgeInsets.only(left: 19, right: 18),
             child: Row(
               children: [
-                Expanded(child: Text(title, style: AppTheme.entryCardTitle)),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: enabled
+                        ? AppTheme.entryCardTitle
+                        : AppTheme.entryCardTitle.copyWith(
+                            color: AppColors.placeholder,
+                          ),
+                  ),
+                ),
                 CustomPaint(
                   size: const Size(8, 14),
-                  painter: _ChevronPainter(color: colors.primary),
+                  painter: _ChevronPainter(
+                    color: enabled ? colors.primary : AppColors.primaryDisabled,
+                  ),
                 ),
               ],
             ),

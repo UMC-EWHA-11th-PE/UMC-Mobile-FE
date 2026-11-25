@@ -45,16 +45,28 @@ Widget _app(
       onRatingCreated: created?.add,
       onSessionExpired: () async => expired?.add(true),
     )..load(),
-    child: ChangeNotifierProvider<FavoriteDetailViewModel>(
-      create: (_) => FavoriteDetailViewModel(
-        (favorites ?? FakeFavoriteServer()).service,
-        movieId: movieId,
-        guard: guard ?? (SessionGuard()..startSession('mingo@example.com')),
-        onSessionExpired: () async => expired?.add(true),
-      )..load(),
-      child: MovieDetailScreen(movieId: movieId),
-    ),
+    // 라우터처럼 movieId가 없으면 즐겨찾기 ViewModel을 만들지 않습니다.
+    // 여부 조회(load)는 상세 화면 initState가 호출합니다.
+    child: movieId == null
+        ? MovieDetailScreen(movieId: movieId)
+        : ChangeNotifierProvider<FavoriteDetailViewModel>(
+            create: (_) => FavoriteDetailViewModel(
+              movieId: movieId,
+              favoriteApi: (favorites ?? FakeFavoriteServer()).service,
+              sessionGuard:
+                  guard ?? (SessionGuard()..startSession('mingo@example.com')),
+              accountId: 'mingo@example.com',
+              onSessionExpired: () async => expired?.add(true),
+            ),
+            child: MovieDetailScreen(movieId: movieId),
+          ),
   ),
+);
+
+/// 제목 옆 북마크 박스(누르는 영역)
+Finder _bookmark() => find.descendant(
+  of: find.byType(FavoriteBookmarkBox),
+  matching: find.byType(InkWell),
 );
 
 /// 평점 Dialog에서 [stars]점을 골라 [comment]와 함께 확인을 누릅니다.
@@ -320,12 +332,12 @@ void main() {
 
       final gate = Completer<void>();
       favorites.gate = gate.future;
-      await tester.tap(find.text('즐겨찾기'));
+      await tester.tap(_bookmark());
       await tester.pump();
       // 요청 중: 버튼 안에 로딩
       expect(
         find.descendant(
-          of: find.byType(FavoriteButton),
+          of: find.byType(FavoriteBookmarkBox),
           matching: find.byType(CircularProgressIndicator),
         ),
         findsOneWidget,
@@ -339,6 +351,46 @@ void main() {
       expect(favorites.movieIds, [1]);
     });
 
+    testWidgets('제목·정보 텍스트 오른쪽에 북마크를 두고, 평점 남기기는 전체 너비', (tester) async {
+      _useTallView(tester);
+      await tester.pumpWidget(_app(fakeTmdbService(), 1));
+      await tester.pumpAndSettle();
+
+      final box = tester.getRect(_bookmark());
+      final title = tester.getRect(find.text('별빛 아래 우리'));
+      expect(box.size, FavoriteBookmarkBox.size);
+      expect(box.left, greaterThan(title.right));
+      expect(box.top, title.top);
+      expect(box.right, 390 - 16);
+      expect(find.text('즐겨찾기'), findsOneWidget); // 북마크 아래 라벨
+
+      final rate = find.ancestor(
+        of: find.text('평점 남기기'),
+        matching: find.byType(InkWell),
+      );
+      expect(tester.getSize(rate).width, 390 - 32);
+    });
+
+    testWidgets('첫 여부 조회가 실패하면 새로고침 버튼으로 다시 확인한다', (tester) async {
+      _useTallView(tester);
+      final favorites = FakeFavoriteServer(movieIds: [1])
+        ..failMethods.add('GET');
+      await tester.pumpWidget(_app(fakeTmdbService(), 1, favorites: favorites));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('여부 다시 확인'), findsOneWidget);
+
+      // 여부를 모르는 동안은 등록·해제를 보내지 않습니다.
+      await tester.tap(_bookmark());
+      await tester.pumpAndSettle();
+      expect(favorites.calls.where((c) => !c.startsWith('GET')), isEmpty);
+
+      favorites.failMethods.clear();
+      await tester.tap(find.byTooltip('여부 다시 확인'));
+      await tester.pumpAndSettle();
+      expect(filledBookmark(), findsOneWidget);
+      expect(find.byTooltip('여부 다시 확인'), findsNothing);
+    });
+
     testWidgets('이미 즐겨찾기한 영화는 채워진 북마크로 시작하고 해제할 수 있다', (tester) async {
       _useTallView(tester);
       final favorites = FakeFavoriteServer(movieIds: [1]);
@@ -346,7 +398,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(filledBookmark(), findsOneWidget);
 
-      await tester.tap(find.text('즐겨찾기'));
+      await tester.tap(_bookmark());
       await tester.pumpAndSettle();
       expect(filledBookmark(), findsNothing);
       expect(find.text('즐겨찾기를 해제했습니다.'), findsOneWidget);
@@ -358,15 +410,23 @@ void main() {
       await tester.pumpWidget(_app(fakeTmdbService(), 1, favorites: favorites));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('즐겨찾기'));
+      await tester.tap(_bookmark());
       await tester.pumpAndSettle();
       expect(filledBookmark(), findsNothing);
-      expect(find.text('저장하지 못했습니다. 다시 시도해 주세요.'), findsOneWidget);
+      // Snackbar와 평점 버튼 아래 안내 박스에 함께 보입니다.
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.text('저장하지 못했습니다. 다시 시도해 주세요.'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('저장하지 못했습니다. 다시 시도해 주세요.'), findsNWidgets(2));
       expect(find.text('즐겨찾기에 추가했습니다.'), findsNothing);
 
       // 다시 시도해 성공하면 안내가 사라집니다.
       favorites.failMethods.clear();
-      await tester.tap(find.text('즐겨찾기'));
+      await tester.tap(_bookmark());
       await tester.pumpAndSettle();
       expect(find.text('저장하지 못했습니다. 다시 시도해 주세요.'), findsNothing);
       expect(filledBookmark(), findsOneWidget);

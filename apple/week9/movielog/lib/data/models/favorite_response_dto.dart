@@ -10,18 +10,21 @@ class FavoriteResponseDto {
     required this.createdAt,
   });
 
-  /// MovieLog 서버의 즐겨찾기 id — 해제·여부 조회 경로에는 쓰지 않습니다. (movieId를 씀)
-  final int favoriteId;
-
-  /// TMDB 영화 id
-  final int movieId;
-  final DateTime createdAt;
-
-  factory FavoriteResponseDto.fromJson(Map<String, dynamic> json) {
+  factory FavoriteResponseDto.fromJson(Object? json) {
+    if (json is! Map<String, Object?>) {
+      throw const FormatException('FavoriteResponseDto must be a JSON object.');
+    }
     return FavoriteResponseDto(
       favoriteId: (json['favoriteId'] as num).toInt(),
       movieId: (json['movieId'] as num).toInt(),
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }
+
+  /// MovieLog 서버의 즐겨찾기 id — 해제·여부 조회 경로에는 쓰지 않습니다. (movieId를 씀)
+  final int favoriteId;
+
+  /// TMDB 영화 id
+  final int movieId;
+  final DateTime createdAt;
 }

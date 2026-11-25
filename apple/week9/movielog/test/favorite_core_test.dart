@@ -7,6 +7,8 @@ import 'package:movielog/core/network/auth_interceptor.dart';
 import 'package:movielog/core/session/auth_session_bridge.dart';
 import 'package:movielog/core/session/session_guard.dart';
 import 'package:movielog/core/utils/map_bounded.dart';
+import 'package:movielog/data/models/favorite_check_dto.dart';
+import 'package:movielog/data/models/favorite_response_dto.dart';
 
 import 'fake_auth.dart';
 import 'fake_favorites.dart';
@@ -122,6 +124,7 @@ void main() {
       var maxRunning = 0;
       final result = await mapBounded<int, String>(
         List.generate(12, (i) => i),
+        5,
         (i) async {
           running++;
           maxRunning = running > maxRunning ? running : maxRunning;
@@ -129,7 +132,6 @@ void main() {
           running--;
           return '영화 $i';
         },
-        concurrency: 5,
       );
 
       expect(result, List.generate(12, (i) => '영화 $i'));
@@ -137,7 +139,14 @@ void main() {
     });
 
     test('빈 목록이면 바로 빈 결과', () async {
-      expect(await mapBounded<int, int>(const [], (i) async => i), isEmpty);
+      expect(await mapBounded<int, int>(const [], 5, (i) async => i), isEmpty);
+    });
+
+    test('concurrency가 0 이하면 ArgumentError', () {
+      expect(
+        () => mapBounded<int, int>([1], 0, (i) async => i),
+        throwsArgumentError,
+      );
     });
   });
 
@@ -146,15 +155,17 @@ void main() {
       final server = FakeFavoriteServer();
       final api = server.service;
 
-      final created = await api.addFavorite(550);
+      final created = await api.addFavorite(movieId: 550);
       expect(created.movieId, 550);
       expect(created.createdAt, DateTime.utc(2026, 9, 6, 12, 14, 3));
 
       expect((await api.fetchMyFavorites()).map((f) => f.movieId), [550]);
-      expect(await api.isFavorite(550), isTrue);
+      final check = await api.checkFavorite(movieId: 550);
+      expect(check.movieId, 550);
+      expect(check.isFavorite, isTrue);
 
-      await api.removeFavorite(550);
-      expect(await api.isFavorite(550), isFalse);
+      await api.deleteFavorite(movieId: 550);
+      expect((await api.checkFavorite(movieId: 550)).isFavorite, isFalse);
       expect(await api.fetchMyFavorites(), isEmpty);
 
       expect(server.calls, [
@@ -171,13 +182,13 @@ void main() {
       final api = FakeFavoriteServer(movieIds: [550]).service;
 
       await expectLater(
-        api.addFavorite(550),
+        api.addFavorite(movieId: 550),
         throwsA(
           isA<DioException>().having(apiErrorCode, 'code', 'FAVORITE409_1'),
         ),
       );
       await expectLater(
-        api.removeFavorite(999),
+        api.deleteFavorite(movieId: 999),
         throwsA(
           isA<DioException>().having(apiErrorCode, 'code', 'FAVORITE404_1'),
         ),
@@ -207,5 +218,21 @@ void main() {
     expect(requests.single.path, endsWith('/search/movie'));
     expect(requests.single.queryParameters['query'], '별빛');
     expect(requests.single.queryParameters['page'], '2');
+  });
+
+  group('즐겨찾기 DTO', () {
+    test('여부 응답에는 movieId가 없어 요청한 값을 함께 넘긴다', () {
+      final dto = FavoriteCheckDto.fromJson({'isFavorite': true}, movieId: 550);
+      expect(dto.movieId, 550);
+      expect(dto.isFavorite, isTrue);
+    });
+
+    test('형식이 다르면 FormatException', () {
+      expect(
+        () => FavoriteCheckDto.fromJson({'isFavorite': 'yes'}, movieId: 1),
+        throwsFormatException,
+      );
+      expect(() => FavoriteResponseDto.fromJson([]), throwsFormatException);
+    });
   });
 }
