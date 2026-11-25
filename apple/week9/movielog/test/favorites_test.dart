@@ -325,6 +325,13 @@ void main() {
     await tester.tap(find.byTooltip('뒤로가기'));
     await tester.pumpAndSettle();
     expect(find.text('아직 즐겨찾기한 영화가 없습니다.'), findsOneWidget);
+
+    // 내 즐겨찾기에서 뒤로가기 → 하단 탭이 있는 마이페이지
+    await tester.tap(find.byTooltip('뒤로가기'));
+    await tester.pumpAndSettle();
+    expect(find.byType(FavoritesScreen), findsNothing);
+    expect(find.text('내 프로필'), findsOneWidget);
+    expect(find.text('마이'), findsOneWidget);
   });
 
   testWidgets('내 정보가 없으면 즐겨찾기 행은 꺼지고, 직접 열면 내 정보 다시 조회를 보여준다', (tester) async {

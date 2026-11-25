@@ -48,6 +48,40 @@
   정적인 `/movies/search`를 동적인 `/movies/:movieId`보다 먼저 등록해 `search`가 영화 ID로 해석되지 않게 합니다.
   빈 검색어는 보내지 않고, 처음 진입(idle)과 결과 없음(empty)을 구분합니다.
 
+## 9주차 검증 기록
+
+### 자동 검증 (2026-11-25)
+
+- `flutter analyze` — No issues found
+- `flutter test` — 290개 전부 통과
+
+| 체크 항목 | 확인한 테스트 |
+| --- | --- |
+| 상세 즐겨찾기 등록·해제·실패·재조회가 movieId 기준 | `favorite_detail_view_model_test.dart`, `movie_detail_test.dart` (경로 `/v8/favorites/{movieId}`, 409·404 뒤 여부 재조회, 실패 시 이전 아이콘 유지, 첫 조회 실패 시 새로고침) |
+| 내 즐겨찾기 진입·복귀 갱신·뒤로가기·하단 탭 경계 | `favorites_test.dart` (마이 → 내 즐겨찾기는 하단 탭 없음, 상세에서 해제 후 복귀 시 사라짐, 뒤로가면 마이페이지) |
+| 홈 인기 5개 유지, 목록 30개 제한 없이 더 보기 | 홈 코드(`movie_home_view_model.dart`, `home_screen.dart`)는 8주차와 동일. `movie_list_test.dart` (45개를 page 3까지) |
+| 초기·추가·빈·오류·끝 상태, 실패한 page 그대로 재시도 | `movie_list_test.dart`, `movie_search_test.dart` (실패 후 같은 page 재요청, 500 page 상한) |
+| 검색·장르 변경·화면 이탈·로그아웃·계정 전환에서 늦은 응답 무시 | 장르 변경 늦은 다음 page, 이전 검색어 늦은 응답, dispose 뒤 응답, 로그아웃 뒤 목록·401, 계정 전환 뒤 상세·목록 |
+| TMDB 보충 1건 실패로 목록 전체가 비지 않음 | `favorites_test.dart` (한 카드만 placeholder + 정보 다시 불러오기) |
+| 토큰을 다른 호스트·로그에 보내지 않음 | `favorite_core_test.dart`, `auth_interceptor_test.dart` (workbook 호스트의 보호 경로에만 JWT), 로그는 Authorization 마스킹·JWT 가림 |
+| 세션 만료 1회 정리, 403·네트워크 실패는 로그아웃 안 함 | `favorites_test.dart` (AUTH401_4 → 토큰 삭제 1회 + /login, 403·연결 실패는 signedIn 유지) |
+
+### 수동 검증 (iOS 시뮬레이터, 실제 v8 서버)
+
+| 순서 | 요청 | 결과 |
+| --- | --- | --- |
+| 이전 주차 토큰으로 시작 | `GET /v8/members/me` | 401 → 세션 정리, 로그인 화면에 만료 안내 |
+| v8 회원가입 → 로그인 | `POST /v8/members` → `POST /v8/auth/login` | 201 → 200, signedIn |
+| 상세 진입 | `GET /v8/favorites/{movieId}` | 200, 북마크에 서버 여부 반영 |
+| 북마크 등록 | `POST /v8/favorites` | 201, 채워진 북마크 + Snackbar |
+| 내 즐겨찾기 | `GET /v8/favorites` | 200, 등록한 영화 카드 표시 |
+| 카드 → 상세 재진입 | `GET /v8/favorites/{movieId}` | 200, 등록 상태로 시작 |
+| 북마크 해제 → 뒤로가기 | `DELETE /v8/favorites/{movieId}` → `GET /v8/favorites` | 200(result null) → 목록에서 사라짐 |
+| 영화 목록·검색 | TMDB `discover/movie?page=1`, `search/movie?query=…&page=1` | 첫 page 표시 |
+
+- 실행 로그에서 JWT 형태 문자열·`Bearer` 토큰 값이 0건임을 확인했습니다. (TMDB 헤더는 `Bearer ***`로 마스킹)
+- Challenge는 선택하지 않았습니다.
+
 ## 내 평점 목록: 현재 계약의 한계 (8주차부터)
 
 ### v8 API에도 없는 것 (v7과 계약 동일)
