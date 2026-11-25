@@ -2,13 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../data/models/tmdb_genre_dto.dart';
+import '../data/services/tmdb_movie_service.dart';
 import '../theme/app_colors.dart';
-import '../view_models/movie_list_view_model.dart';
+import '../view_models/load_phase.dart';
+import '../view_models/paged_movies_view_model.dart';
 import '../widgets/movie_list_status.dart';
-import '../widgets/tmdb_movie_grid.dart';
+import '../widgets/movie_page_footer.dart';
+import '../widgets/tmdb_movie_card.dart';
 
-class MovieListScreen extends StatelessWidget {
+class MovieListScreen extends StatefulWidget {
   const MovieListScreen({super.key});
+
+  @override
+  State<MovieListScreen> createState() => _MovieListScreenState();
+}
+
+class _MovieListScreenState extends State<MovieListScreen> {
+  List<TmdbGenreDto> _genres = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGenres();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<PagedMoviesViewModel>().loadInitial();
+    });
+  }
+
+  Future<void> _loadGenres() async {
+    try {
+      final genres = await context.read<TmdbMovieService>().fetchGenres();
+      if (mounted) setState(() => _genres = genres);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,30 +50,45 @@ class MovieListScreen extends StatelessWidget {
             color: AppColors.violet,
           ),
         ),
-        actions: [IconButton(icon: const Icon(Icons.search), onPressed: () {})],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () => context.push('/movies/search'),
+          ),
+        ],
       ),
-      body: Consumer<MovieListViewModel>(
-        builder: (context, viewModel, child) {
+      body: Consumer<PagedMoviesViewModel>(
+        builder: (context, vm, child) {
           return Column(
             children: [
-              _GenreChips(viewModel: viewModel),
+              _GenreChips(genres: _genres, vm: vm),
               Expanded(
-                child: switch (viewModel.status) {
-                  MovieListLoadStatus.idle ||
-                  MovieListLoadStatus.loading => const MovieListLoading(),
-                  MovieListLoadStatus.error => MovieListError(
-                    onRetry: () => context.read<MovieListViewModel>().retry(),
+                child: switch (vm.phase) {
+                  LoadPhase.idle ||
+                  LoadPhase.loading => const MovieListLoading(),
+                  LoadPhase.error => MovieListError(
+                    onRetry: () => vm.loadInitial(genreId: vm.genreId),
                     onCancel: () => context.go('/home'),
                   ),
-                  MovieListLoadStatus.empty => const MovieListEmpty(),
-                  MovieListLoadStatus.success => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                        child: Text('총 ${viewModel.movies.length}편'),
+                  LoadPhase.empty => const MovieListEmpty(),
+                  LoadPhase.ready => CustomScrollView(
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                        sliver: SliverGrid.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                mainAxisSpacing: 16,
+                                crossAxisSpacing: 12,
+                                childAspectRatio: 0.52,
+                              ),
+                          itemCount: vm.movies.length,
+                          itemBuilder: (context, index) =>
+                              TmdbMovieCard(movie: vm.movies[index]),
+                        ),
                       ),
-                      Expanded(child: TmdbMovieGrid(movies: viewModel.movies)),
+                      SliverToBoxAdapter(child: MoviePageFooter(vm: vm)),
                     ],
                   ),
                 },
@@ -60,15 +102,16 @@ class MovieListScreen extends StatelessWidget {
 }
 
 class _GenreChips extends StatelessWidget {
-  const _GenreChips({required this.viewModel});
+  const _GenreChips({required this.genres, required this.vm});
 
-  final MovieListViewModel viewModel;
+  final List<TmdbGenreDto> genres;
+  final PagedMoviesViewModel vm;
 
   @override
   Widget build(BuildContext context) {
     final items = <(int?, String)>[
       (null, '전체'),
-      ...viewModel.genres.map((genre) => (genre.id, genre.name)),
+      ...genres.map((genre) => (genre.id, genre.name)),
     ];
 
     return SizedBox(
@@ -80,7 +123,7 @@ class _GenreChips extends StatelessWidget {
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final (genreId, name) = items[index];
-          final isSelected = genreId == viewModel.selectedGenreId;
+          final isSelected = genreId == vm.genreId;
 
           return ChoiceChip(
             label: Text(name),
@@ -92,10 +135,7 @@ class _GenreChips extends StatelessWidget {
             labelStyle: TextStyle(
               color: isSelected ? AppColors.white : AppColors.black,
             ),
-            onSelected: viewModel.isLoading
-                ? null
-                : (_) =>
-                      context.read<MovieListViewModel>().selectGenre(genreId),
+            onSelected: (_) => vm.loadInitial(genreId: genreId),
           );
         },
       ),

@@ -7,7 +7,7 @@ import '../view_models/auth_view_model.dart';
 import '../view_models/edit_profile_view_model.dart';
 import '../widgets/movielog_button.dart';
 
-/// 이메일은 읽기 전용, 닉네임만 수정합니다. (PATCH /v7/members/me)
+/// 이메일은 읽기 전용, 닉네임만 수정합니다. (PATCH /v8/members/me)
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 

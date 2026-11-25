@@ -9,12 +9,10 @@ class AuthApiService {
 
   final Dio _dio;
 
-  /// 회원가입 경로. 워크북 7주차에 나온 v6 경로입니다.
-  /// v7 Swagger에 `/v7/members`가 있다면 그 경로로 바꿔도 됩니다.
-  static const signUpPath = '/v6/members';
+  static const signUpPath = '/v8/members';
 
   Future<LoginResult> login(LoginRequest request) async {
-    final response = await _dio.post('/v7/auth/login', data: request.toJson());
+    final response = await _dio.post('/v8/auth/login', data: request.toJson());
     final data = response.data;
     if (data is! Map<String, dynamic>) {
       throw StateError('로그인 응답 형식이 올바르지 않습니다.');

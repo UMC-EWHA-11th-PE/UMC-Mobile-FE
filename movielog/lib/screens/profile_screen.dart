@@ -77,7 +77,15 @@ class ProfileBody extends StatelessWidget {
         ProfileHeader(member: member),
         const SizedBox(height: 24),
         const ProfileStats(),
-        const SizedBox(height: 32),
+        const SizedBox(height: 16),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.bookmark_outline, color: AppColors.violet),
+          title: const Text('내 즐겨찾기'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/my/favorites'),
+        ),
+        const SizedBox(height: 16),
         const FavoriteGenres(),
       ],
     );
